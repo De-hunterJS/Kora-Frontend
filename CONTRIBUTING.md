@@ -298,12 +298,22 @@ merge the same way a failing type-check does.
 
 `ar` is a right-to-left locale (see `rtlLocales` in `i18n/config.ts`). When building or editing UI:
 
-- Prefer logical Tailwind classes (`ps-*`/`pe-*`, `ms-*`/`me-*`, `text-start`/`text-end`) over
-  physical ones (`pl-*`/`pr-*`, `text-left`/`text-right`) so layout flips correctly under `dir="rtl"`.
-- Check components that position things absolutely (dropdowns, tooltips, badges) with the language
-  switcher set to Arabic — absolute positioning is the most common place RTL breaks silently.
-- Directional icons (arrows, chevrons) generally should flip; check `rtl:` variant classes are applied
-  where the codebase already uses them (e.g. chevrons in dropdowns).
+- Prefer logical Tailwind classes (`ps-*`/`pe-*`, `ms-*`/`me-*`, `start-*`/`end-*`,
+  `text-start`/`text-end`) over physical ones (`pl-*`/`pr-*`, `ml-*`/`mr-*`, `left-*`/`right-*`,
+  `text-left`/`text-right`) so layout flips correctly under `dir="rtl"`. The `rtl:` variant
+  (`tailwind.config.ts`) is the escape hatch when a value genuinely must change rather than mirror.
+- Check components that position things absolutely (dropdowns, tooltips, badges, inputs with
+  leading icons) with the language switcher set to Arabic — absolute positioning is the most common
+  place RTL breaks silently.
+- Directional icons (arrows, chevrons) generally should flip; apply `rtl:rotate-180` (see
+  `components/layout/LanguageSwitcher.tsx`).
+- Motion and transforms are not mirrored automatically: a checked toggle that slides
+  `translate-x-5` in LTR needs a matching `rtl:-translate-x-5` so the knob still travels away from
+  the inline-start edge.
+
+Before merging UI work, run the RTL smoke checks in `e2e/a11y-audit.spec.ts` (they cover
+`/settings` and `/secondary` at 390px, portaled-dialog direction, and horizontal overflow) and
+confirm no horizontal scroll on a 390px viewport.
 
 ### Category Taxonomy & Preview Mode
 

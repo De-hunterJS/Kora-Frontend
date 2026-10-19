@@ -24,9 +24,30 @@ vi.mock("next-intl", () => ({
   },
 }));
 
-import ActiveFilterChips, { deriveChips } from "@/components/marketplace/ActiveFilterChips";
+import ActiveFilterChips, {
+  deriveChips,
+  getChipMotionProps,
+} from "@/components/marketplace/ActiveFilterChips";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import type { FilterState } from "@/store/invoiceStore";
+
+/** Point window.matchMedia at a fixed `prefers-reduced-motion` result. */
+function setReducedMotion(matches: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("prefers-reduced-motion") ? matches : false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
 
 // ─── Reset store before each test ────────────────────────────────────────────
 
@@ -153,6 +174,78 @@ describe("deriveChips", () => {
       showExpired: false,
     });
     expect(chips.find((c) => c.filterKey === "aprRange")).toBeUndefined();
+  });
+});
+
+// ─── Reduced motion (Issue #1013) ────────────────────────────────────────────
+
+describe("getChipMotionProps", () => {
+  it("returns instant (transition-less) props when reduced motion is requested", () => {
+    const props = getChipMotionProps(true);
+    expect(props.transition).toEqual({ duration: 0 });
+    expect(props.initial).toBe(false);
+    // Exit still targets the resting state so AnimatePresence removes it
+    // immediately rather than animating a scale/translate.
+    expect(props.exit).toEqual({ opacity: 1, scale: 1, y: 0 });
+  });
+
+  it("returns the full scale/translate animation when motion is allowed", () => {
+    const props = getChipMotionProps(false);
+    expect(props.transition).toEqual({ duration: 0.15 });
+    expect(props.initial).toEqual({ opacity: 0, scale: 0.9, y: -4 });
+    expect(props.exit).toEqual({ opacity: 0, scale: 0.9, y: -4 });
+  });
+});
+
+describe("ActiveFilterChips — prefers-reduced-motion", () => {
+  const activeFilters = {
+    categories: ["technology"],
+    jurisdictions: [],
+    riskTiers: [],
+    aprRange: [0, 50] as [number, number],
+    activeOnly: false,
+    showExpired: false,
+  };
+
+  afterEach(() => {
+    // Restore the default non-matching mock from vitest.setup.ts.
+    setReducedMotion(false);
+  });
+
+  it("flips to reduced animations when the media query matches", () => {
+    setReducedMotion(true);
+    useInvoiceStore.setState({ filters: activeFilters });
+    render(<ActiveFilterChips />);
+
+    expect(screen.getByTestId("active-filter-chips")).toHaveAttribute(
+      "data-reduced-motion",
+      "true"
+    );
+  });
+
+  it("keeps full animations when the media query does not match", () => {
+    setReducedMotion(false);
+    useInvoiceStore.setState({ filters: activeFilters });
+    render(<ActiveFilterChips />);
+
+    expect(screen.getByTestId("active-filter-chips")).toHaveAttribute(
+      "data-reduced-motion",
+      "false"
+    );
+  });
+
+  it("still announces removals while reduced motion is active", async () => {
+    const user = userEvent.setup();
+    setReducedMotion(true);
+    useInvoiceStore.setState({ filters: activeFilters });
+    render(<ActiveFilterChips />);
+
+    const announcer = screen.getByTestId("filter-chips-announcer");
+    await user.click(screen.getByTestId("remove-chip-category:technology"));
+
+    await waitFor(() => {
+      expect(announcer.textContent).toContain("Technology");
+    });
   });
 });
 

@@ -439,3 +439,51 @@ test.describe("Marketplace — Category Taxonomy Preview (Flag Disabled)", () =>
     await expect(triggerButton).not.toBeVisible();
   });
 });
+
+// ─── Scroll reset on filter change (Issue #1015) ─────────────────────────────
+
+test.describe("Marketplace — scroll reset on result-set change", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("kora-tour-done", "true");
+      localStorage.setItem("kora-changelog-seen-version", "0.1.0");
+    });
+    await page.goto("/marketplace");
+    await page.waitForSelector("a[href^='/marketplace/']", { timeout: 15_000 });
+    await page.waitForTimeout(600); // let URL hydration + fingerprint settle
+  });
+
+  test("sort-only changes keep the current scroll position", async ({ page }) => {
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY))
+      .toBeGreaterThan(0);
+
+    await page.locator("select").selectOption("amount_desc");
+    await page.waitForTimeout(700);
+
+    // Reordering the same result set must not bounce the user to the top.
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  });
+
+  test("clearing the search resets the grid to the top", async ({ page }) => {
+    const searchInput = page.getByPlaceholder(
+      /Search by debtor, invoice number, or jurisdiction/i,
+    );
+    // Narrow to a still-large result set, then scroll to the bottom.
+    await searchInput.fill("a");
+    await page.waitForTimeout(600);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY))
+      .toBeGreaterThan(0);
+
+    await page.getByRole("button", { name: /Clear search/i }).click();
+
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY), {
+        message: "changing the result set should return the grid to the top",
+      })
+      .toBe(0);
+  });
+});

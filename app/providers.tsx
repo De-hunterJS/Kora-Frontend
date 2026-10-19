@@ -127,7 +127,13 @@ function SettingsWalletSync() {
   return null;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
   const onboardingTourEnabled = useFeatureFlag("onboarding-tour");
   const devtoolsEnabled = useFeatureFlag("devtools");
   const [queryClient] = useState(
@@ -199,7 +205,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LocaleProvider allMessages={ALL_MESSAGES}>
+      <LocaleProvider allMessages={ALL_MESSAGES} initialLocale={initialLocale}>
         <ThemeProvider>
           {/* Raises the re-verification modal that `useVerifiedAction` awaits
               (#681). It was imported here but never mounted, so every gated

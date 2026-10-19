@@ -1,4 +1,24 @@
 {
+  "metadata": {
+    "investorDashboard": {
+      "title": "Painel do investidor",
+      "description": "Acompanhe suas posições, rendimento e desempenho da carteira na Kora Protocol.",
+      "ogDescription": "Monitore seus investimentos, rendimento e atividade de pagamento na Kora Protocol.",
+      "ogImageAlt": "Painel do investidor da Kora Protocol"
+    },
+    "smeDashboard": {
+      "title": "Painel de PMEs",
+      "description": "Gerencie suas faturas, financiamento e pagamentos na Kora Protocol.",
+      "ogDescription": "Acompanhe o financiamento de faturas e os pagamentos no painel de PMEs da Kora Protocol.",
+      "ogImageAlt": "Painel de PMEs da Kora Protocol"
+    },
+    "settings": {
+      "title": "Configurações",
+      "description": "Gerencie suas notificações, limites e preferências na Kora Protocol.",
+      "ogDescription": "Configure notificações, limites de concentração e preferências na Kora Protocol.",
+      "ogImageAlt": "Configurações da Kora Protocol"
+    }
+  },
   "nav": {
     "marketplace": "Mercado",
     "invest": "Investir",
@@ -985,6 +1005,10 @@
     "gotIt": "Entendi"
   },
   "settings": {
+    "error": {
+      "title": "Não foi possível carregar as configurações",
+      "description": "Algo deu errado ao carregar suas configurações. Tente novamente."
+    },
     "title": "Configurações",
     "subtitle": "Gerencie as preferências de notificação e o tour do produto.",
     "connectTitle": "Conecte sua carteira",
