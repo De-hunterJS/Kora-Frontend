@@ -924,7 +924,9 @@
     "title": "Red Incorrecta",
     "message": "Red Incorrecta: Conectado a {current}, pero esta aplicación requiere {expected}{passphrase}. Por favor cambia la red de tu billetera para continuar.",
     "passphraseMismatch": " (incompatibilidad de frase de contraseña)",
-    "dismiss": "Cerrar aviso de red incorrecta"
+    "dismiss": "Cerrar aviso de red incorrecta",
+    "fix": "Corregir",
+    "switchNetwork": "Cambiar Red"
   },
   "addressBook": {
     "title": "Libreta de Direcciones",
