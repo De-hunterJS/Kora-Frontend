@@ -160,3 +160,33 @@ your change.
 2. Add `components/ui/<name>.stories.tsx` with at least `Default` and one variant/accessibility story.
 3. Export it from `components/ui/index.ts` if it is broadly reused; otherwise document its direct import path in the table above.
 4. Update this inventory doc so the new primitive appears in the correct table.
+
+## Layout & Landmark Structure
+
+Screen readers rely on semantic landmarks to navigate page regions efficiently. All major layout surfaces expose explicit ARIA roles and labels:
+
+| Component | Landmark | Label | Rationale |
+| --------- | -------- | ----- | --------- |
+| `Header` (navbar) | `banner` | Implicit via `<header>` in top-level layout | Primary site navigation; one per page |
+| `Footer` | `contentinfo` | `aria-labelledby="footer-copyright"` | Copyright, changelog, shortcuts; links footer region to copyright text |
+| `main` (layout children) | `main` | Implicit via `<main>` wrapper in layout | Primary page content; one per page |
+
+### Focus Management
+
+- **Modal dialogs** (`Dialog`, `Drawer`, `BottomSheet`) automatically trap focus and restore it to the trigger element on close via Radix UI primitives.
+- **Footer changelog button** stores a ref to the trigger; when `uiStore.changelogOpen` transitions from `true` → `false`, focus is programmatically restored to the button via `useEffect`.
+- **Page navigation** (via Next.js `<Link>`) moves focus to the new page's `<main>` element automatically; no custom focus management is needed for route changes.
+
+### Skip Links
+
+Currently not implemented. Consider adding a visually-hidden "Skip to main content" link at the start of `<body>` if user feedback indicates keyboard users are navigating through repetitive chrome on every page load.
+
+### Testing Landmarks
+
+Run `npm run test:a11y` (if available) to audit landmark structure. Manual verification:
+
+1. Enable a screen reader (NVDA on Windows, VoiceOver on macOS).
+2. Navigate by landmarks (NVDA: `D`/`Shift+D`, VoiceOver: `VO+U` → Landmarks).
+3. Verify `banner`, `main`, and `contentinfo` are announced and navigable.
+4. Confirm footer's label reads "Kora Protocol copyright" or similar localized text.
+

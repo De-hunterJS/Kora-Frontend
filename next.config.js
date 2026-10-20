@@ -183,6 +183,8 @@ const CSP_DIRECTIVES = {
   "form-action": ["'self'"],
   // Service worker requires 'self'; blob: for wallet kit internals
   "worker-src": ["'self'", "blob:"],
+  // CSP violation reporting — allows monitoring nonce regressions and third-party breakages
+  "report-uri": ["/api/csp-report"],
 };
 
 function buildCspHeader() {

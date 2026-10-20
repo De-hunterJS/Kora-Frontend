@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/ui/stat-card";
 import EmptyState from "@/components/ui/EmptyState";
 import { formatCurrency, cn } from "@/lib/utils";
+import { exportCsv } from "@/lib/export";
 import type { PositionListingMeta } from "@/store/positionListingStore";
 import type { InvestorPosition } from "@/types/invoice";
 
@@ -35,7 +36,7 @@ interface SellerAnalyticsDashboardProps {
   className?: string;
 }
 
-const CSV_HEADERS = [
+const SELLER_EXPORT_HEADERS = [
   "Position ID",
   "Invoice #",
   "Debtor",
@@ -44,30 +45,33 @@ const CSV_HEADERS = [
   "Implied Discount (%)",
   "Days on Market",
   "Listed At",
-];
+] as const;
 
-function toCsvRow(m: SellerListingMetrics): string {
-  return [
-    m.positionId,
-    m.invoiceNumber,
-    `"${m.debtorName}"`,
-    m.askPrice.toFixed(2),
-    m.expectedReturn.toFixed(2),
-    (m.impliedDiscount * 100).toFixed(2),
-    m.daysOnMarket,
-    m.listedAt,
-  ].join(",");
+type SellerExportRow = Record<(typeof SELLER_EXPORT_HEADERS)[number], string | number>;
+
+/**
+ * Convert seller listing metrics into plain export row objects consumed by exportCsv.
+ * Maintains original column order for compatibility with user automation scripts.
+ */
+export function metricsToExportRow(m: SellerListingMetrics): SellerExportRow {
+  return {
+    "Position ID": m.positionId,
+    "Invoice #": m.invoiceNumber,
+    "Debtor": m.debtorName,
+    "Ask Price": m.askPrice.toFixed(2),
+    "Expected Return": m.expectedReturn.toFixed(2),
+    "Implied Discount (%)": (m.impliedDiscount * 100).toFixed(2),
+    "Days on Market": m.daysOnMarket,
+    "Listed At": m.listedAt,
+  };
 }
 
-function downloadCsv(rows: SellerListingMetrics[]): void {
-  const lines = [CSV_HEADERS.join(","), ...rows.map(toCsvRow)];
-  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `kora-seller-listings-${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+/** Build a dated seller listings CSV filename: `kora-seller-listings-YYYY-MM-DD.csv`. */
+export function sellerListingsExportFilename(date: Date = new Date()): string {
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(date.getUTCDate()).padStart(2, "0");
+  return `kora-seller-listings-${yyyy}-${mm}-${dd}.csv`;
 }
 
 /**
@@ -129,7 +133,9 @@ export function SellerAnalyticsDashboard({
   );
 
   const handleExport = useCallback(() => {
-    downloadCsv(metrics);
+    const rows = metrics.map(metricsToExportRow);
+    const filename = sellerListingsExportFilename();
+    exportCsv(rows, filename, Array.from(SELLER_EXPORT_HEADERS));
   }, [metrics]);
 
   if (listings.length === 0) {

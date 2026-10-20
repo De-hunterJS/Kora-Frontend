@@ -87,3 +87,37 @@ The CI environment executes `scripts/audit.js` to enforce these checks.
 ## Contact
 
 Create a private GitHub Security Advisory or email security@openledger.foundation.
+
+## CSP Violation Monitoring
+
+Content Security Policy (CSP) violations are automatically reported to `/api/csp-report`, which logs sanitized violation details including:
+
+- `document-uri` (stripped of query params to remove PII)
+- `violated-directive` (e.g., `script-src`, `img-src`)
+- `blocked-uri` (the resource that was blocked)
+- `source-file`, `line-number`, `column-number` (when available)
+
+### Monitoring Expectations
+
+**Production deployments should:**
+
+1. **Monitor CSP report logs** — violations indicate nonce regressions, third-party script breakages, or potential XSS attempts.
+2. **Rate limit enforcement** — the endpoint limits reports to 10 per IP per 5 minutes to prevent abuse.
+3. **PII sanitization** — all `document-uri` fields are stripped of query parameters and fragments before logging. Script samples are truncated to 100 characters.
+4. **Do not execute reported scripts** — the endpoint never evaluates `script-sample` or `blocked-uri` content to prevent reflected XSS through the reporting mechanism itself.
+
+### Report Formats Supported
+
+- **Legacy format** (`application/csp-report`): `{ "csp-report": { ... } }`
+- **Modern Reporting API** (`application/reports+json`): `[{ type: "csp-violation", body: { ... } }]`
+
+### Integration with External Monitoring
+
+For production-grade alerting, integrate the CSP report endpoint with:
+
+- **Sentry** — forward sanitized reports to Sentry's security monitoring.
+- **Datadog / CloudWatch Logs** — centralize violation logs for dashboard visualization.
+- **PagerDuty** — trigger alerts when violation rate exceeds thresholds.
+
+The endpoint currently logs to `console.warn`; replace with `lib/logger` or your logging service in production.
+

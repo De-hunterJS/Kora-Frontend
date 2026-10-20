@@ -20,9 +20,10 @@ vi.mock("next-intl", () => ({
 
 // ─── Store mock ──────────────────────────────────────────────────────────────
 const mockSetChangelogOpen = vi.fn();
+const mockChangelogOpen = { value: false };
 vi.mock("@/store/uiStore", () => ({
-  useUIStore: (selector: (s: { setChangelogOpen: typeof mockSetChangelogOpen }) => unknown) =>
-    selector({ setChangelogOpen: mockSetChangelogOpen }),
+  useUIStore: (selector: (s: { setChangelogOpen: typeof mockSetChangelogOpen; changelogOpen: boolean }) => unknown) =>
+    selector({ setChangelogOpen: mockSetChangelogOpen, changelogOpen: mockChangelogOpen.value }),
 }));
 
 // ─── Changelog badge mock ────────────────────────────────────────────────────
@@ -36,7 +37,21 @@ vi.mock("@/hooks/useChangelogBadge", () => ({
 describe("Footer", () => {
   beforeEach(() => {
     mockHasUnread.value = false;
+    mockChangelogOpen.value = false;
     mockSetChangelogOpen.mockClear();
+  });
+
+  it("renders footer element with contentinfo role", () => {
+    render(<Footer />);
+    const footer = screen.getByRole("contentinfo");
+    expect(footer).toBeInTheDocument();
+  });
+
+  it("footer has aria-labelledby pointing to copyright text", () => {
+    render(<Footer />);
+    const footer = screen.getByRole("contentinfo");
+    expect(footer).toHaveAttribute("aria-labelledby", "footer-copyright");
+    expect(screen.getByText("© 2026 Kora Protocol")).toHaveAttribute("id", "footer-copyright");
   });
 
   it("renders the keyboard shortcuts button with translated label", () => {
@@ -99,5 +114,21 @@ describe("Footer", () => {
   it("renders the copyright span", () => {
     render(<Footer />);
     expect(screen.getByText("© 2026 Kora Protocol")).toBeInTheDocument();
+  });
+
+  it("restores focus to changelog button when modal closes", () => {
+    const { rerender } = render(<Footer />);
+    const changelogBtn = screen.getByRole("button", { name: "Open changelog" });
+
+    // Simulate opening the changelog
+    mockChangelogOpen.value = true;
+    rerender(<Footer />);
+
+    // Simulate closing the changelog
+    mockChangelogOpen.value = false;
+    rerender(<Footer />);
+
+    // Focus should be restored to the trigger button
+    expect(changelogBtn).toHaveFocus();
   });
 });

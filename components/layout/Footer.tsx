@@ -3,18 +3,39 @@
 import { useTranslations } from "next-intl";
 import { useUIStore } from "@/store/uiStore";
 import { useChangelogBadge } from "@/hooks/useChangelogBadge";
+import { useRef, useEffect } from "react";
 
 const APP_VERSION = "0.1.0";
 
 export function Footer() {
   const t = useTranslations("footer");
   const setChangelogOpen = useUIStore((s) => s.setChangelogOpen);
+  const isChangelogOpen = useUIStore((s) => s.changelogOpen);
   const { hasUnread } = useChangelogBadge();
 
+  const changelogTriggerRef = useRef<HTMLButtonElement>(null);
+  const previousOpenStateRef = useRef(isChangelogOpen);
+
+  // Focus return management — restore focus to changelog trigger when modal closes
+  useEffect(() => {
+    const wasOpen = previousOpenStateRef.current;
+    const isNowClosed = !isChangelogOpen;
+
+    if (wasOpen && isNowClosed && changelogTriggerRef.current) {
+      changelogTriggerRef.current.focus();
+    }
+
+    previousOpenStateRef.current = isChangelogOpen;
+  }, [isChangelogOpen]);
+
   return (
-    <footer className="border-t border-border/60 bg-background/80 py-4">
+    <footer
+      role="contentinfo"
+      aria-labelledby="footer-copyright"
+      className="border-t border-border/60 bg-background/80 py-4"
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 text-xs text-muted-foreground">
-        <span>{t("copyright", { year: new Date().getFullYear() })}</span>
+        <span id="footer-copyright">{t("copyright", { year: new Date().getFullYear() })}</span>
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -27,6 +48,7 @@ export function Footer() {
             {t("keyboardShortcuts")}
           </button>
           <button
+            ref={changelogTriggerRef}
             type="button"
             onClick={() => setChangelogOpen(true)}
             className="relative hover:text-foreground transition-colors underline-offset-2 hover:underline"
