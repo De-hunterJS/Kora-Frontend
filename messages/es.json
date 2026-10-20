@@ -54,7 +54,23 @@
     "redirecting": "Te estamos llevando a tu panel…",
     "mobileApp": "Aplicación móvil",
     "openInApp": "Abrir en la aplicación",
-    "deepLinkWaiting": "Esperando a que se abra la aplicación de billetera…"
+    "deepLinkWaiting": "Esperando a que se abra la aplicación de billetera…",
+    "trustline": {
+      "eurc": {
+        "cta": "Agregar línea de confianza EURC",
+        "adding": "Agregando EURC…",
+        "loading": "Agregando línea de confianza EURC…",
+        "success": "Línea de confianza EURC añadida correctamente",
+        "error": "Error al agregar la línea de confianza EURC"
+      },
+      "usdc": {
+        "cta": "Agregar línea de confianza USDC",
+        "adding": "Agregando USDC…",
+        "loading": "Agregando línea de confianza USDC…",
+        "success": "Línea de confianza USDC añadida — el saldo se actualizará pronto",
+        "error": "Error al agregar la línea de confianza USDC"
+      }
+    }
   },
   "transaction": {
     "building": "Construyendo transacción…",
@@ -564,7 +580,14 @@
       "description": "Financia facturas en el mercado para comenzar a construir tu portafolio.",
       "message": "Financia facturas en el mercado para construir tu portafolio."
     },
-    "fundTestnet": "Financiar Cuenta Testnet"
+    "fundTestnet": "Financiar Cuenta Testnet",
+    "export": {
+      "csv": "Exportar CSV",
+      "pdf": "Exportar PDF",
+      "csvAriaLabel": "Exportar posiciones como CSV",
+      "pdfAriaLabel": "Exportar posiciones como PDF",
+      "emptyTooltip": "No hay posiciones para exportar"
+    }
   },
   "transactions": {
     "title": "Historial de Transacciones",

@@ -54,7 +54,23 @@
     "redirecting": "جارٍ توجيهك إلى لوحة التحكم…",
     "mobileApp": "تطبيق الجوال",
     "openInApp": "افتح في التطبيق",
-    "deepLinkWaiting": "في انتظار فتح تطبيق المحفظة…"
+    "deepLinkWaiting": "في انتظار فتح تطبيق المحفظة…",
+    "trustline": {
+      "eurc": {
+        "cta": "إضافة خط ثقة EURC",
+        "adding": "جارٍ إضافة EURC…",
+        "loading": "جارٍ إضافة خط ثقة EURC…",
+        "success": "تمت إضافة خط ثقة EURC بنجاح",
+        "error": "فشل إضافة خط ثقة EURC"
+      },
+      "usdc": {
+        "cta": "إضافة خط ثقة USDC",
+        "adding": "جارٍ إضافة USDC…",
+        "loading": "جارٍ إضافة خط ثقة USDC…",
+        "success": "تمت إضافة خط ثقة USDC — سيتم تحديث الرصيد قريباً",
+        "error": "فشل إضافة خط ثقة USDC"
+      }
+    }
   },
   "transaction": {
     "building": "جارٍ بناء المعاملة…",
@@ -564,7 +580,14 @@
       "description": "موّل الفواتير في السوق لبدء بناء محفظتك.",
       "message": "موّل الفواتير في السوق لبناء محفظتك."
     },
-    "fundTestnet": "تمويل حساب الاختبار"
+    "fundTestnet": "تمويل حساب الاختبار",
+    "export": {
+      "csv": "تصدير CSV",
+      "pdf": "تصدير PDF",
+      "csvAriaLabel": "تصدير المراكز كـ CSV",
+      "pdfAriaLabel": "تصدير المراكز كـ PDF",
+      "emptyTooltip": "لا توجد مراكز للتصدير"
+    }
   },
   "transactions": {
     "title": "سجل المعاملات",

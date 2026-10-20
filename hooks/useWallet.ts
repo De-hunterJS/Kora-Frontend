@@ -691,6 +691,30 @@ export function useWallet() {
     await refreshBalance();
   }, [address, refreshBalance, signTransaction]);
 
+  const addUsdcTrustlineOnTestnet = useCallback(async () => {
+    if (!address) throw new Error("Wallet not connected");
+
+    const raw = await getAccountBalances(address);
+    if (hasTrustline(raw.otherAssets, "USDC", WALLET_ASSETS.usdc.issuer)) {
+      await refreshBalance();
+      return;
+    }
+
+    const trustlineXdr = await buildAddTrustlineTx(address, "usdc");
+    const signedTrustlineXdr = await signTransaction(trustlineXdr);
+    const submit = await submitTransaction(signedTrustlineXdr);
+    if (submit.status === "ERROR") {
+      throw new Error("USDC trustline transaction submission failed");
+    }
+    if (submit.hash) {
+      await waitForTransaction(submit.hash);
+    }
+    await refreshBalance();
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.account.usdcBalance(address),
+    });
+  }, [address, queryClient, refreshBalance, signTransaction]);
+
   const exportWalletDiagnostics = useCallback((): WalletDiagnosticsExport => {
     return sanitizeWalletDiagnosticsExport({
       exportedAt: new Date().toISOString(),
@@ -883,6 +907,7 @@ export function useWallet() {
     manualReconnect,
     fundWalletOnTestnet,
     addEurcTrustlineOnTestnet,
+    addUsdcTrustlineOnTestnet,
     mintTestnetUsdc,
     signTransaction,
     refreshBalance,
