@@ -328,6 +328,10 @@ When adding or renaming an invoice category:
 3. Add translated strings to `marketplace.categoryLabels.<key>` across `en.json`, `es.json`, `ar.json`, and `pt-BR.json`.
 4. Run `npm run check:i18n` to ensure all locale catalogs maintain parity.
 
+Secondary-market filter option labels are defined in the `secondary.filters`
+message namespace. Keep option values stable for URL encoding, and translate
+only their display labels through `next-intl`.
+
 ### Manually testing the language switcher
 
 The switcher lives in `components/layout/LanguageSwitcher.tsx` (rendered in the navbar) and persists

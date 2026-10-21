@@ -43,6 +43,7 @@ import { cn, isValidStellarAddress } from "@/lib/utils";
 import { safeStellarTxUrl } from "@/lib/security";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { usePinataHealth } from "@/hooks/usePinataHealth";
+import { MAX_INVOICE_PDF_BYTES } from "@/lib/validations/upload";
 import ShareInvoiceButton from "@/components/invoice/ShareInvoiceButton";
 import { useFeatureFlag } from "@/lib/featureFlags";
 import { useWalletKycStatus } from "@/store/walletStore";
@@ -272,7 +273,7 @@ export default function CreateInvoicePage() {
     onDrop,
     accept: { "application/pdf": [".pdf"] },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: MAX_INVOICE_PDF_BYTES,
   });
 
   const nextStep = async () => {

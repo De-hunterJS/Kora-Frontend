@@ -85,6 +85,7 @@ describe("Structured Logger", () => {
   it("reports client errors to vitals with a csrf token and sanitized payload", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({
+        ok: true,
         json: vi.fn().mockResolvedValue({ token: "csrf-token" }),
       })
       .mockResolvedValueOnce({ ok: true });

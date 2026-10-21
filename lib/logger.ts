@@ -3,6 +3,8 @@
  * Outputs logs as JSON to console.log for ingestion/monitoring.
  */
 
+import { getCsrfToken } from "@/lib/csrfClient";
+
 export interface LogContext {
   requestId?: string | null;
   route?: string | null;
@@ -115,12 +117,7 @@ class StructuredLogger {
     if (typeof window === "undefined") return;
 
     try {
-      const csrfResponse = await fetch("/api/auth/csrf", {
-        method: "GET",
-        credentials: "same-origin",
-      });
-      const csrfData = await csrfResponse.json().catch(() => ({}));
-      const csrfToken = typeof csrfData?.token === "string" ? csrfData.token : "";
+      const csrfToken = await getCsrfToken();
 
       await fetch("/api/vitals", {
         method: "POST",

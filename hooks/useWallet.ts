@@ -28,6 +28,7 @@ import {
   pollUsdcBalanceAfterMint,
 } from "@/hooks/useUsdcBalance";
 import { queryKeys } from "@/lib/queryKeys";
+import { getCsrfToken } from "@/lib/csrfClient";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { env } from "@/lib/env";
 import type { WalletProvider } from "@/types";
@@ -721,9 +722,7 @@ export function useWallet() {
 
   const requestChallenge = useCallback(async (): Promise<string> => {
     try {
-      const csrfRes = await fetch("/api/auth/csrf");
-      const csrfData = await csrfRes.json();
-      const csrfToken = csrfData?.token ?? "";
+      const csrfToken = await getCsrfToken();
 
       const res = await fetch("/api/auth/challenge", {
         method: "POST",
@@ -752,9 +751,7 @@ export function useWallet() {
     }
 
     try {
-      const csrfRes = await fetch("/api/auth/csrf");
-      const csrfData = await csrfRes.json();
-      const csrfToken = csrfData?.token ?? "";
+      const csrfToken = await getCsrfToken();
 
       const challenge = await requestChallenge();
       const walletKit = getKit();

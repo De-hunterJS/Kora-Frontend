@@ -50,6 +50,9 @@
     "reconnecting": "Reconectando...",
     "restoringSession": "Restaurando sesión de billetera...",
     "balanceLoadFailed": "No se pudieron cargar los saldos",
+    "unfundedAccountTitle": "Activa tu cuenta de Stellar",
+    "unfundedAccountDescription": "Esta cuenta aún no tiene XLM. Fúndala para activarla y cargar los saldos.",
+    "fundWithXlm": "Añadir XLM con Friendbot",
     "walletConnected": "Billetera conectada",
     "redirecting": "Te estamos llevando a tu panel…",
     "mobileApp": "Aplicación móvil",
@@ -170,6 +173,18 @@
       "dueSoonest": "Vencimiento: Más Próximo",
       "dueLatest": "Vencimiento: Más Lejano",
       "newest": "Más Reciente"
+    },
+    "jurisdictionLabels": {
+      "US": "Estados Unidos",
+      "EU": "Unión Europea",
+      "UK": "Reino Unido",
+      "NG": "Nigeria",
+      "KE": "Kenia",
+      "GH": "Ghana",
+      "ZA": "Sudáfrica",
+      "OTHER": "Otro",
+      "IN": "India",
+      "BR": "Brasil"
     },
     "categoryLabels": {
       "manufacturing": "Manufactura",
@@ -1346,6 +1361,23 @@
     "empty": "Ninguna posición financiada este mes",
     "noData": "Aún no hay posiciones financiadas para agrupar.",
     "export": "Exportar cohortes"
+  },
+  "secondary": {
+    "filters": {
+      "tenor": {
+        "all": "Todos los Plazos",
+        "0-30": "0 - 30 días",
+        "31-60": "31 - 60 días",
+        "61-90": "61 - 90 días",
+        "90+": "90+ días"
+      },
+      "yield": {
+        "0": "Cualquier Rendimiento",
+        "5": "5%+ de Rendimiento",
+        "10": "10%+ de Rendimiento",
+        "15": "15%+ de Rendimiento"
+      }
+    }
   },
   "secondaryMarket": {
     "title": "Mercado Secundario",

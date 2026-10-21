@@ -50,6 +50,9 @@
     "reconnecting": "Reconnecting...",
     "restoringSession": "Restoring wallet session...",
     "balanceLoadFailed": "Failed to load balances",
+    "unfundedAccountTitle": "Activate your Stellar account",
+    "unfundedAccountDescription": "This account has no XLM yet. Fund it to activate the wallet and load balances.",
+    "fundWithXlm": "Fund with XLM using Friendbot",
     "walletConnected": "Wallet connected",
     "redirecting": "Taking you to your dashboard…",
     "mobileApp": "Mobile app",
@@ -197,6 +200,18 @@
       "clearJurisdictions": "Clear Jurisdictions",
       "clearCategories": "Clear Categories",
       "showAllStatuses": "Show All Statuses"
+    },
+    "jurisdictionLabels": {
+      "US": "United States",
+      "EU": "European Union",
+      "UK": "United Kingdom",
+      "NG": "Nigeria",
+      "KE": "Kenya",
+      "GH": "Ghana",
+      "ZA": "South Africa",
+      "OTHER": "Other",
+      "IN": "India",
+      "BR": "Brazil"
     },
     "categoryLabels": {
       "manufacturing": "Manufacturing",
@@ -1328,6 +1343,23 @@
     "empty": "No positions funded this month",
     "noData": "No funded positions to group yet.",
     "export": "Export cohorts"
+  },
+  "secondary": {
+    "filters": {
+      "tenor": {
+        "all": "All Tenors",
+        "0-30": "0 - 30 days",
+        "31-60": "31 - 60 days",
+        "61-90": "61 - 90 days",
+        "90+": "90+ days"
+      },
+      "yield": {
+        "0": "Any Yield",
+        "5": "5%+ Yield",
+        "10": "10%+ Yield",
+        "15": "15%+ Yield"
+      }
+    }
   },
   "secondaryMarket": {
     "title": "Secondary Market",

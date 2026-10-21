@@ -50,6 +50,9 @@
     "reconnecting": "Reconectando...",
     "restoringSession": "Restaurando sessão da carteira...",
     "balanceLoadFailed": "Falha ao carregar saldos",
+    "unfundedAccountTitle": "Ative sua conta Stellar",
+    "unfundedAccountDescription": "Esta conta ainda não tem XLM. Adicione fundos para ativá-la e carregar os saldos.",
+    "fundWithXlm": "Adicionar XLM com o Friendbot",
     "walletConnected": "Carteira conectada",
     "redirecting": "Levando você ao seu painel…",
     "mobileApp": "Aplicativo móvel",
@@ -170,6 +173,18 @@
       "dueSoonest": "Vencimento: Mais Próximo",
       "dueLatest": "Vencimento: Mais Distante",
       "newest": "Listadas Mais Recentemente"
+    },
+    "jurisdictionLabels": {
+      "US": "Estados Unidos",
+      "EU": "União Europeia",
+      "UK": "Reino Unido",
+      "NG": "Nigéria",
+      "KE": "Quênia",
+      "GH": "Gana",
+      "ZA": "África do Sul",
+      "OTHER": "Outro",
+      "IN": "Índia",
+      "BR": "Brasil"
     },
     "categoryLabels": {
       "manufacturing": "Manufatura",
@@ -1346,6 +1361,23 @@
     "empty": "Nenhuma posição financiada neste mês",
     "noData": "Ainda não há posições financiadas para agrupar.",
     "export": "Exportar safras"
+  },
+  "secondary": {
+    "filters": {
+      "tenor": {
+        "all": "Todos os Prazos",
+        "0-30": "0 - 30 dias",
+        "31-60": "31 - 60 dias",
+        "61-90": "61 - 90 dias",
+        "90+": "90+ dias"
+      },
+      "yield": {
+        "0": "Qualquer Rendimento",
+        "5": "5%+ de Rendimento",
+        "10": "10%+ de Rendimento",
+        "15": "15%+ de Rendimento"
+      }
+    }
   },
   "secondaryMarket": {
     "title": "Mercado Secundário",

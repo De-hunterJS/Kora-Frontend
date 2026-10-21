@@ -11,6 +11,7 @@ import {
 import { useWallet } from "@/hooks/useWallet";
 import { VerificationModal } from "./VerificationModal";
 import { VERIFICATION_EXPIRY_MS } from "@/store/walletStore";
+import { setCsrfWalletAddress } from "@/lib/csrfClient";
 
 interface VerificationContextType {
   requireVerification: (actionType: string) => Promise<void>;
@@ -47,6 +48,10 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
     resolve: () => void;
     reject: (reason: Error) => void;
   } | null>(null);
+
+  useEffect(() => {
+    setCsrfWalletAddress(wallet.address ?? null);
+  }, [wallet.address]);
 
   const fetchFreshChallenge = useCallback(async (): Promise<string | null> => {
     try {
