@@ -87,3 +87,35 @@ The CI environment executes `scripts/audit.js` to enforce these checks.
 ## Contact
 
 Create a private GitHub Security Advisory or email security@openledger.foundation.
+
+## CSP Nonce — Per-Request Inline Script Allow-listing (#1022)
+
+The middleware injects a per-request CSP nonce so inline `<script nonce="…">` tags (used by Next.js for the theme-bootstrap snippet) are allow-listed without requiring `'unsafe-inline'` in production.
+
+### How it works
+
+1. **Generation** — `middleware.ts` calls `crypto.randomUUID()` for each request to produce a cryptographically random UUID nonce.
+2. **Forwarding** — The nonce is set on the forwarded request headers as `x-nonce`. `app/layout.tsx` reads this header and attaches it to inline `<script>` tags.
+3. **CSP injection** — If `next.config.js` has already set a `Content-Security-Policy` header, the middleware replaces the `script-src` directive with a nonce-scoped version, discarding the static placeholder.
+
+### Production vs. development directives
+
+| Environment | `script-src` |
+|-------------|--------------|
+| production | `'self' 'nonce-<uuid>' 'strict-dynamic'` |
+| development | `'self' 'nonce-<uuid>' 'unsafe-inline' 'unsafe-eval'` |
+
+`'unsafe-eval'` and `'unsafe-inline'` are development-only and **gated on `NODE_ENV`** inside `buildNonceCsp()`. They must not appear in production script-src.
+
+### Static asset bypass
+
+The middleware matcher (`config.matcher`) explicitly excludes `_next/static`, `_next/image`, `favicon.ico`, `icons/`, `wallets/`, and `manifest.json` so the nonce injection is never applied to static file responses.
+
+### Implementation
+
+| File | Role |
+|------|------|
+| `middleware.ts` | `buildNonceCsp(nonce)` and injection logic |
+| `app/layout.tsx` | Reads `x-nonce` header and attaches to inline scripts |
+| `__tests__/middleware.test.ts` | Regression tests: nonce UUID format, per-request entropy, prod/dev CSP profiles, matcher exclusions |
+| `e2e/security-headers.spec.ts` | E2E: `Content-Security-Policy` header present on every page |
