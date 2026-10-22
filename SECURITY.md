@@ -28,6 +28,41 @@ We support the `main` branch and the latest released tag. If you're unsure wheth
 
 We welcome good-faith security research. Please avoid privacy violations, data destruction, and denial-of-service testing without prior consent.
 
+## Auth Challenge Nonce Store (#1019)
+
+`POST /api/auth/challenge` issues a one-time nonce that the wallet signs to prove key ownership. The nonce is stored in an in-memory `Map` inside `app/api/auth/challenge/store.ts`.
+
+### Limits and eviction policy
+
+| Property | Value | Rationale |
+|----------|-------|-----------|
+| `NONCE_TTL_MS` | 10 minutes | Long enough for a user to read and sign; short enough to limit the replay window. |
+| `MAX_NONCES` | 500 | Prevents unbounded heap growth under a serverless flood. |
+| Eviction strategy | TTL first, then oldest-first | Stale entries are always removed before the size cap is enforced. |
+
+**TTL eviction** — `evictStaleNonces()` is called automatically at the start of every `generateNonceChallenge()` invocation.  No background timer is needed.
+
+**Size cap** — After TTL eviction, if the store still holds ≥ `MAX_NONCES` entries, the oldest nonces (insertion order) are removed until the count is below the cap.  Under a flood, older challenges are invalidated rather than new ones being rejected.
+
+**Single-use** — `consumeNonce(nonce)` marks a nonce as `used: true` on the first successful call.  Any subsequent call with the same nonce returns `false`, preventing replay attacks.
+
+**Expired consumption** — If a nonce passes its TTL between generation and consumption, `consumeNonce` returns `false` and removes the entry.
+
+### Clock skew
+
+`Date.now()` is used on the server.  Sub-second drift between edge instances is acceptable — a nonce that expires a few milliseconds early is safely regenerated.  In a multi-instance deployment, nonces are **not shared** across instances; clients must verify against the same instance that issued the challenge, or a Redis-backed store variant must be used (see `docs/architecture.md`).
+
+### Implementation
+
+| File | Role |
+|------|------|
+| `app/api/auth/challenge/store.ts` | In-memory nonce map, TTL, size cap, single-use logic |
+| `app/api/auth/challenge/route.ts` | `POST` handler — CSRF-guarded, calls `generateNonceChallenge()` |
+| `app/api/auth/challenge/__tests__/store.test.ts` | Unit tests: TTL, single-use, flood, eviction |
+| `app/api/auth/challenge/__tests__/route.test.ts` | Route-level integration tests |
+
+---
+
 ## CSRF Protection
 
 All mutating API routes (`POST /api/auth/challenge`, `POST /api/auth/verify`, `POST /api/feedback`) are protected against Cross-Site Request Forgery using the **double-submit cookie** pattern.
@@ -87,3 +122,35 @@ The CI environment executes `scripts/audit.js` to enforce these checks.
 ## Contact
 
 Create a private GitHub Security Advisory or email security@openledger.foundation.
+
+## CSP Nonce — Per-Request Inline Script Allow-listing (#1022)
+
+The middleware injects a per-request CSP nonce so inline `<script nonce="…">` tags (used by Next.js for the theme-bootstrap snippet) are allow-listed without requiring `'unsafe-inline'` in production.
+
+### How it works
+
+1. **Generation** — `middleware.ts` calls `crypto.randomUUID()` for each request to produce a cryptographically random UUID nonce.
+2. **Forwarding** — The nonce is set on the forwarded request headers as `x-nonce`. `app/layout.tsx` reads this header and attaches it to inline `<script>` tags.
+3. **CSP injection** — If `next.config.js` has already set a `Content-Security-Policy` header, the middleware replaces the `script-src` directive with a nonce-scoped version, discarding the static placeholder.
+
+### Production vs. development directives
+
+| Environment | `script-src` |
+|-------------|--------------|
+| production | `'self' 'nonce-<uuid>' 'strict-dynamic'` |
+| development | `'self' 'nonce-<uuid>' 'unsafe-inline' 'unsafe-eval'` |
+
+`'unsafe-eval'` and `'unsafe-inline'` are development-only and **gated on `NODE_ENV`** inside `buildNonceCsp()`. They must not appear in production script-src.
+
+### Static asset bypass
+
+The middleware matcher (`config.matcher`) explicitly excludes `_next/static`, `_next/image`, `favicon.ico`, `icons/`, `wallets/`, and `manifest.json` so the nonce injection is never applied to static file responses.
+
+### Implementation
+
+| File | Role |
+|------|------|
+| `middleware.ts` | `buildNonceCsp(nonce)` and injection logic |
+| `app/layout.tsx` | Reads `x-nonce` header and attaches to inline scripts |
+| `__tests__/middleware.test.ts` | Regression tests: nonce UUID format, per-request entropy, prod/dev CSP profiles, matcher exclusions |
+| `e2e/security-headers.spec.ts` | E2E: `Content-Security-Policy` header present on every page |

@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { useInvoiceStore } from "@/store/invoiceStore";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
 
 export interface FilterChip {
@@ -100,6 +101,32 @@ export function deriveChips(
   return chips;
 }
 
+/**
+ * Motion props for an individual chip. Extracted so the reduced-motion branch
+ * is unit-testable without depending on Framer's animation timing in jsdom.
+ *
+ * When reduced motion is requested the chip still mounts/unmounts — it just
+ * does so with zero-duration opacity changes instead of a scaled translate,
+ * and the "Clear all" layout animation is dropped by the caller.
+ */
+export function getChipMotionProps(prefersReducedMotion: boolean) {
+  if (prefersReducedMotion) {
+    return {
+      initial: false as const,
+      animate: { opacity: 1, scale: 1, y: 0 },
+      exit: { opacity: 1, scale: 1, y: 0 },
+      transition: { duration: 0 },
+    };
+  }
+
+  return {
+    initial: { opacity: 0, scale: 0.9, y: -4 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.9, y: -4 },
+    transition: { duration: 0.15 },
+  };
+}
+
 export default function ActiveFilterChips({
   chips: externalChips,
   className,
@@ -107,6 +134,8 @@ export default function ActiveFilterChips({
   const t = useTranslations("marketplace");
   const { filters, updateSingleFilter, resetFilters } = useInvoiceStore();
   const announcerId = useId();
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const chipMotion = getChipMotionProps(prefersReducedMotion);
 
   // Derive chips from store if not provided externally
   const chips = externalChips ?? deriveChips(filters, t);
@@ -154,15 +183,13 @@ export default function ActiveFilterChips({
         role="group"
         aria-label="Active filters"
         data-testid="active-filter-chips"
+        data-reduced-motion={prefersReducedMotion}
       >
         <AnimatePresence initial={false}>
           {chips.map((chip) => (
             <motion.div
               key={chip.key}
-              initial={{ opacity: 0, scale: 0.9, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: -4 }}
-              transition={{ duration: 0.15 }}
+              {...chipMotion}
               className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
             >
               <span>{chip.label}</span>
@@ -191,7 +218,7 @@ export default function ActiveFilterChips({
 
         {/* Clear all */}
         <motion.button
-          layout
+          layout={!prefersReducedMotion}
           type="button"
           onClick={() => {
             resetFilters();

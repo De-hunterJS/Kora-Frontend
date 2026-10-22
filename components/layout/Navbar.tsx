@@ -274,7 +274,9 @@ export function Navbar() {
 
         {/* Right side controls */}
         <div className="flex items-center gap-2">
-          <NetworkStatusIndicator />
+          <div className="hidden sm:block">
+            <NetworkStatusIndicator />
+          </div>
 
           {/* Command palette trigger */}
           <button
@@ -320,13 +322,15 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setHistoryOpen(true)}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:block"
             aria-label="View transaction history"
           >
             <History className="h-5 w-5" />
           </button>
 
-          <ChangelogNavButton />
+          <div className="hidden sm:block">
+            <ChangelogNavButton />
+          </div>
 
           {/* Keyboard shortcut hint — desktop only */}
           {shortcutsEnabled && (

@@ -1,4 +1,24 @@
 {
+  "metadata": {
+    "investorDashboard": {
+      "title": "لوحة المستثمر",
+      "description": "تابع مراكزك وعائدك وأداء محفظتك على Kora Protocol.",
+      "ogDescription": "راقب استثماراتك وعائدك ونشاط السداد في Kora Protocol.",
+      "ogImageAlt": "لوحة المستثمر في Kora Protocol"
+    },
+    "smeDashboard": {
+      "title": "لوحة المنشآت الصغيرة والمتوسطة",
+      "description": "أدر فواتيرك وتمويلك ومدفوعاتك على Kora Protocol.",
+      "ogDescription": "تابع تمويل الفواتير والمدفوعات من لوحة منشأتك على Kora Protocol.",
+      "ogImageAlt": "لوحة المنشآت الصغيرة والمتوسطة في Kora Protocol"
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "description": "أدر إشعاراتك وحدودك وتفضيلاتك في Kora Protocol.",
+      "ogDescription": "اضبط الإشعارات وحدود التركيز والتفضيلات في Kora Protocol.",
+      "ogImageAlt": "إعدادات Kora Protocol"
+    }
+  },
   "nav": {
     "marketplace": "السوق",
     "invest": "استثمر",
@@ -50,11 +70,30 @@
     "reconnecting": "جارٍ إعادة الربط...",
     "restoringSession": "جارٍ استعادة جلسة المحفظة...",
     "balanceLoadFailed": "تعذر تحميل الأرصدة",
+    "unfundedAccountTitle": "فعّل حساب Stellar الخاص بك",
+    "unfundedAccountDescription": "لا يحتوي هذا الحساب على XLM بعد. موّله لتفعيله وتحميل الأرصدة.",
+    "fundWithXlm": "تمويل الحساب بـ XLM عبر Friendbot",
     "walletConnected": "تم الاتصال بالمحفظة",
     "redirecting": "جارٍ توجيهك إلى لوحة التحكم…",
     "mobileApp": "تطبيق الجوال",
     "openInApp": "افتح في التطبيق",
-    "deepLinkWaiting": "في انتظار فتح تطبيق المحفظة…"
+    "deepLinkWaiting": "في انتظار فتح تطبيق المحفظة…",
+    "trustline": {
+      "eurc": {
+        "cta": "إضافة خط ثقة EURC",
+        "adding": "جارٍ إضافة EURC…",
+        "loading": "جارٍ إضافة خط ثقة EURC…",
+        "success": "تمت إضافة خط ثقة EURC بنجاح",
+        "error": "فشل إضافة خط ثقة EURC"
+      },
+      "usdc": {
+        "cta": "إضافة خط ثقة USDC",
+        "adding": "جارٍ إضافة USDC…",
+        "loading": "جارٍ إضافة خط ثقة USDC…",
+        "success": "تمت إضافة خط ثقة USDC — سيتم تحديث الرصيد قريباً",
+        "error": "فشل إضافة خط ثقة USDC"
+      }
+    }
   },
   "transaction": {
     "building": "جارٍ بناء المعاملة…",
@@ -170,6 +209,18 @@
       "dueSoonest": "تاريخ الاستحقاق: الأقرب",
       "dueLatest": "تاريخ الاستحقاق: الأبعد",
       "newest": "الأحدث إدراجًا"
+    },
+    "jurisdictionLabels": {
+      "US": "الولايات المتحدة",
+      "EU": "الاتحاد الأوروبي",
+      "UK": "المملكة المتحدة",
+      "NG": "نيجيريا",
+      "KE": "كينيا",
+      "GH": "غانا",
+      "ZA": "جنوب أفريقيا",
+      "OTHER": "أخرى",
+      "IN": "الهند",
+      "BR": "البرازيل"
     },
     "categoryLabels": {
       "manufacturing": "التصنيع",
@@ -564,7 +615,14 @@
       "description": "موّل الفواتير في السوق لبدء بناء محفظتك.",
       "message": "موّل الفواتير في السوق لبناء محفظتك."
     },
-    "fundTestnet": "تمويل حساب الاختبار"
+    "fundTestnet": "تمويل حساب الاختبار",
+    "export": {
+      "csv": "تصدير CSV",
+      "pdf": "تصدير PDF",
+      "csvAriaLabel": "تصدير المراكز كـ CSV",
+      "pdfAriaLabel": "تصدير المراكز كـ PDF",
+      "emptyTooltip": "لا توجد مراكز للتصدير"
+    }
   },
   "transactions": {
     "title": "سجل المعاملات",
@@ -924,7 +982,9 @@
     "title": "شبكة خاطئة",
     "message": "شبكة خاطئة: متصل بـ {current}، لكن هذا التطبيق يتطلب {expected}{passphrase}. يرجى تغيير شبكة محفظتك للمتابعة.",
     "passphraseMismatch": " (عدم تطابق العبارة السرية)",
-    "dismiss": "تجاهل تحذير الشبكة الخاطئة"
+    "dismiss": "تجاهل تحذير الشبكة الخاطئة",
+    "fix": "إصلاح",
+    "switchNetwork": "تبديل الشبكة"
   },
   "addressBook": {
     "title": "دفتر العناوين",
@@ -985,6 +1045,10 @@
     "gotIt": "حسنًا"
   },
   "settings": {
+    "error": {
+      "title": "تعذّر تحميل الإعدادات",
+      "description": "حدث خطأ أثناء تحميل إعداداتك. يرجى المحاولة مرة أخرى."
+    },
     "title": "الإعدادات",
     "subtitle": "إدارة تفضيلات الإشعارات وجولة المنتج.",
     "connectTitle": "اربط محفظتك",
@@ -1073,13 +1137,7 @@
     "pageSme": "فواتيري",
     "pageTransactions": "سجل المعاملات",
     "pageAnalytics": "التحليلات",
-    "synonyms": [
-      "ربط المحفظة",
-      "إنشاء فاتورة",
-      "فصل المحفظة",
-      "اختصارات",
-      "اختصارات لوحة المفاتيح"
-    ]
+    "synonyms": ["ربط المحفظة", "إنشاء فاتورة", "فصل المحفظة", "اختصارات", "اختصارات لوحة المفاتيح"]
   },
   "feedback": {
     "sendFeedback": "إرسال ملاحظات",
@@ -1346,6 +1404,23 @@
     "empty": "لا توجد مراكز ممولة هذا الشهر",
     "noData": "لا توجد مراكز ممولة للتجميع بعد.",
     "export": "تصدير المجموعات"
+  },
+  "secondary": {
+    "filters": {
+      "tenor": {
+        "all": "كل المدد",
+        "0-30": "0 - 30 يومًا",
+        "31-60": "31 - 60 يومًا",
+        "61-90": "61 - 90 يومًا",
+        "90+": "90+ يومًا"
+      },
+      "yield": {
+        "0": "أي عائد",
+        "5": "عائد 5%+",
+        "10": "عائد 10%+",
+        "15": "عائد 15%+"
+      }
+    }
   },
   "secondaryMarket": {
     "title": "السوق الثانوي",

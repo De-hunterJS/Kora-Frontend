@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { MAX_INVOICE_PDF_BYTES } from "@/lib/validations/upload";
 import {
   checkPinataHealth,
   invalidatePinataHealthCache,
@@ -24,6 +25,10 @@ vi.mock("@/lib/env", () => ({
   env: {
     NEXT_PUBLIC_IPFS_GATEWAY: "https://gateway.pinata.cloud/ipfs",
   },
+}));
+
+vi.mock("@/lib/csrfClient", () => ({
+  getCsrfToken: async () => "csrf-test-token",
 }));
 
 // Mock invoiceSvg to avoid generating real SVGs in tests
@@ -54,6 +59,7 @@ describe("IPFS Upload Service", () => {
     // Set up XMLHttpRequest mock
     mockXhr = {
       open: vi.fn(),
+      setRequestHeader: vi.fn(),
       send: vi.fn(function (this: any) {
         // Default to immediate success
         this.onload();
@@ -105,6 +111,10 @@ describe("IPFS Upload Service", () => {
   // ─── 2. File Size Validation Tests ─────────────────────────────────────────
 
   describe("File Size Validation", () => {
+    it("uses the shared invoice PDF size limit", () => {
+      expect(MAX_FILE_SIZE).toBe(MAX_INVOICE_PDF_BYTES);
+    });
+
     it("should reject files larger than 10MB before any network call", async () => {
       const largeFile = new File([new ArrayBuffer(MAX_FILE_SIZE + 1)], "large.pdf", {
         type: "application/pdf",
@@ -119,9 +129,11 @@ describe("IPFS Upload Service", () => {
       const validFile = new File([new ArrayBuffer(MAX_FILE_SIZE)], "valid.pdf", {
         type: "application/pdf",
       });
+      const validCid = "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco";
+      mockXhr.responseText = JSON.stringify({ IpfsHash: validCid });
 
       const cid = await uploadInvoicePDF(validFile, "GADDRESS");
-      expect(cid).toBe("QmPDFCid1234567890");
+      expect(cid).toBe(validCid);
       expect(mockXhr.open).toHaveBeenCalled();
     });
   });
@@ -198,6 +210,19 @@ describe("IPFS Upload Service", () => {
       amount: 50000,
     };
 
+    it("attaches the cached CSRF token to metadata uploads", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ cid: "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco" }),
+      });
+
+      await uploadInvoiceMetadata(mockMetadata, "GADDRESS");
+
+      expect(mockFetch.mock.calls[0][1].headers).toMatchObject({
+        "x-kora-csrf": "csrf-test-token",
+      });
+    });
+
     it("should successfully upload metadata on first attempt", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -253,6 +278,19 @@ describe("IPFS Upload Service", () => {
   describe("uploadInvoicePDF (XHR & Progress)", () => {
     const dummyFile = new File(["dummy pdf content"], "invoice.pdf", {
       type: "application/pdf",
+    });
+
+    it("attaches the cached CSRF token to PDF uploads", async () => {
+      mockXhr.responseText = JSON.stringify({
+        IpfsHash: "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco",
+      });
+
+      await uploadInvoicePDF(dummyFile, "GADDRESS");
+
+      expect(mockXhr.setRequestHeader).toHaveBeenCalledWith(
+        "x-kora-csrf",
+        "csrf-test-token",
+      );
     });
 
     it("should upload file successfully", async () => {

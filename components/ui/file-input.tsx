@@ -5,6 +5,7 @@ import { type FileRejection, useDropzone } from "react-dropzone";
 import { UploadCloud, FileText, Trash2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { safeExternalUrl } from "@/lib/security";
+import { MAX_INVOICE_PDF_BYTES } from "@/lib/validations/upload";
 
 export interface FileInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "defaultValue"> {
   label?: string;
@@ -36,7 +37,7 @@ const FileInput = React.forwardRef<HTMLInputElement, FileInputProps>(
       success,
       hint,
       value,
-      maxSizeMB = 5,
+      maxSizeMB = MAX_INVOICE_PDF_BYTES / (1024 * 1024),
       id,
       onChange,
       disabled,

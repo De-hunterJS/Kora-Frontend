@@ -14,6 +14,8 @@ import {
   repaymentSchema,
   userProfileSchema,
 } from "../invoice";
+import { MAX_INVOICE_PDF_BYTES } from "../upload";
+import { MAX_FILE_SIZE } from "@/lib/ipfs";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -161,11 +163,11 @@ describe("uploadSchema", () => {
   });
 
   it("accepts boundary size of exactly 10MB", () => {
-    ok(uploadSchema, { file: makePdfFile(10 * 1024 * 1024) });
+    ok(uploadSchema, { file: makePdfFile(MAX_INVOICE_PDF_BYTES) });
   });
 
   it("rejects file over 10MB", () => {
-    fail(uploadSchema, { file: makePdfFile(10 * 1024 * 1024 + 1) }, "file");
+    fail(uploadSchema, { file: makePdfFile(MAX_INVOICE_PDF_BYTES + 1) }, "file");
   });
 
   it("rejects non-PDF MIME type", () => {

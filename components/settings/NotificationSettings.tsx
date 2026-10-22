@@ -33,7 +33,12 @@ function Toggle({
       <span
         className={[
           "inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform",
-          checked ? "translate-x-5" : "translate-x-1",
+          // The knob travels along the inline axis: left-to-right in LTR, right-to-left
+          // under dir="rtl". The negative RTL translate mirrors the resting/checked
+          // positions instead of leaving the knob pinned to the start edge.
+          checked
+            ? "translate-x-5 rtl:-translate-x-5"
+            : "translate-x-1 rtl:-translate-x-1",
         ].join(" ")}
       />
     </button>

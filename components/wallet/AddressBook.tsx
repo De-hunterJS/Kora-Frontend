@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useWalletStore } from "@/store";
 import { isValidStellarAddress, truncateAddress } from "@/lib/utils";
 import { toast } from "sonner";
-import { buildLabelMessageV1, type SignedLabel } from "@/store/walletStore";
+import { buildLabelMessage, verifySignedLabel, isLabelVerified, type SignedLabel } from "@/store/walletStore";
 
 type AddressBookEntry = {
   id: string;
@@ -175,10 +175,10 @@ export function AddressBook({ onClose, onSelect }: { onClose?: () => void; onSel
         toast.error(t("walletNotConnected"));
         return;
       }
-      // Sign the canonical v1 payload with the connected wallet so the
-      // attestation proves ownership of the labelling key.
+      // Sign the canonical label payload with the connected wallet so the
+      // attestation proves ownership of the labelling key (#1106 + #1062 verify).
       const signedAt = Date.now();
-      const message = buildLabelMessageV1(entry.address, entry.label, signedAt);
+      const message = buildLabelMessage(entry.address, entry.label);
       const { getKit } = await import("@/hooks/useWallet");
       const { result } = await (getKit() as any).signMessage({
         message,
@@ -617,9 +617,14 @@ export function AddressBook({ onClose, onSelect }: { onClose?: () => void; onSel
                         <span className="truncate font-medium text-foreground">
                           {entry.label || truncateAddress(entry.address, 8)}
                         </span>
-                        {entry.signedLabel && (
-                          <span className="text-green-500" title={t("verifiedLabel")}>
+                        {entry.signedLabel && verifySignedLabel(entry.signedLabel) && (
+                          <span className="text-green-500 shrink-0" title={t("verifiedLabel")}>
                             <ShieldCheck className="h-4 w-4" />
+                          </span>
+                        )}
+                        {entry.signedLabel && !verifySignedLabel(entry.signedLabel) && (
+                          <span className="text-yellow-500 shrink-0" title={t("unverifiedLabel")}>
+                            <Shield className="h-4 w-4" />
                           </span>
                         )}
                         {onSelect && (

@@ -13,7 +13,7 @@
 import type { BrowserContext, Page } from "@playwright/test";
 
 export const MOCK_ADDRESS =
-  "GBVZQ4YWKJXQKZQKZQKZQKZQKZQKZQKZQKZQKZQKZQKZQKZQKZQKZQ";
+  "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
 
 /**
  * Inject wallet stubs into every new page opened in this context.
@@ -49,6 +49,7 @@ export async function injectWalletStubs(
         state: {
           address,
           publicKey: address,
+          status: "connected",
           isConnected: true,
           provider: "freighter",
           network: "testnet",

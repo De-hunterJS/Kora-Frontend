@@ -276,17 +276,19 @@ export function WrongNetworkBanner() {
             variant="danger"
             size="sm"
             onClick={() => setShowWizard(true)}
+            aria-label={t("fix")}
           >
             <ChevronRight className="h-3 w-3 mr-0.5" />
-            Fix
+            {t("fix")}
           </Button>
           <Button
             variant="danger"
             size="sm"
             onClick={handleSwitchNetwork}
             isLoading={isSwitching}
+            aria-label={t("switchNetwork")}
           >
-            Switch Network
+            {t("switchNetwork")}
           </Button>
           <button
             type="button"

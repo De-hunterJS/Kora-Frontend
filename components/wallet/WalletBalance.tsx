@@ -10,6 +10,7 @@ import { StellarAddress } from "@/components/ui/stellar-address";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TestnetUsdcFaucet } from "@/components/wallet/TestnetUsdcFaucet";
+import { isTestnetUsdcFaucetEnabled } from "@/hooks/useUsdcBalance";
 import { cn } from "@/lib/utils";
 
 interface WalletBalanceContentProps {
@@ -18,6 +19,7 @@ interface WalletBalanceContentProps {
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
+  isUnfunded: boolean;
   refresh: () => Promise<void>;
   lowBalanceAsset: any;
   onClose?: () => void;
@@ -28,6 +30,7 @@ export function WalletBalanceContent({
   balances,
   isLoading,
   isError,
+  isUnfunded,
   refresh,
   lowBalanceAsset,
   onClose,
@@ -74,7 +77,32 @@ export function WalletBalanceContent({
             </div>
           ))}
         </div>
-      ) : isError ? (
+              ) : isUnfunded ? (
+                <div className="flex flex-col items-center justify-center p-3 text-center space-y-2" data-testid="wallet-balance-unfunded">
+                  <AlertCircle className="h-7 w-7 text-warning" />
+                  <p className="text-sm font-medium text-foreground">{t("unfundedAccountTitle")}</p>
+                  <p className="text-xs text-muted-foreground">{t("unfundedAccountDescription")}</p>
+                  {isTestnetUsdcFaucetEnabled() && (
+                    <a
+                      href={`https://friendbot.stellar.org?addr=${encodeURIComponent(address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-primary hover:underline"
+                      data-testid="wallet-balance-friendbot-link"
+                    >
+                      {t("fundWithXlm")}
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRefresh}
+                    className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
+                    data-testid="wallet-balance-retry"
+                  >
+                    <RefreshCw className="h-3 w-3" /> {t("retry")}
+                  </button>
+                </div>
+              ) : isError ? (
         <div className="flex flex-col items-center justify-center p-3 text-center space-y-2" data-testid="wallet-balance-error">
           <AlertCircle className="h-7 w-7 text-destructive" />
           <p className="text-xs text-muted-foreground">
@@ -115,7 +143,7 @@ export function WalletBalanceContent({
       )}
 
       {/* Low balance warning badge and fund CTA */}
-      {lowBalanceAsset && (
+      {lowBalanceAsset && !isUnfunded && (
         <div className="space-y-2 border-t border-border/50 pt-3" data-testid="wallet-balance-low-warning">
           <div className="flex items-center gap-1.5 rounded-lg border border-warning/20 bg-warning/5 p-2 text-warning-foreground">
             <AlertCircle className="h-4 w-4 text-warning shrink-0" />
@@ -133,7 +161,7 @@ export function WalletBalanceContent({
 export function WalletBalance() {
   const t = useTranslations("wallet");
   const address = useWalletStore((s) => s.address);
-  const { balances, fundingAsset, lowBalanceAsset, isLoading, isError, error, refresh } = useWalletBalances(address ?? undefined);
+  const { balances, fundingAsset, lowBalanceAsset, isLoading, isError, error, isUnfunded, refresh } = useWalletBalances(address ?? undefined);
   const { isDesktop } = useBreakpoint();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -185,6 +213,7 @@ export function WalletBalance() {
             isLoading={isLoading}
             isError={isError}
             error={error}
+            isUnfunded={isUnfunded}
             refresh={refresh}
             lowBalanceAsset={lowBalanceAsset}
             onClose={() => setOpen(false)}
@@ -201,6 +230,7 @@ export function WalletBalance() {
             isLoading={isLoading}
             isError={isError}
             error={error}
+            isUnfunded={isUnfunded}
             refresh={refresh}
             lowBalanceAsset={lowBalanceAsset}
             onClose={() => setOpen(false)}

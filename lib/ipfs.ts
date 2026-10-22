@@ -19,6 +19,8 @@ import {
 import { generateInvoiceSvg, svgToFile, rasterizeSvgToThumbnail } from "@/lib/invoiceSvg";
 import { createMockUploadToken } from "@/lib/security";
 import { parseUploadRejection } from "@/lib/uploadScanResult";
+import { MAX_INVOICE_PDF_BYTES } from "@/lib/validations/upload";
+import { getCsrfToken } from "@/lib/csrfClient";
 
 const IPFS_GATEWAY = env.NEXT_PUBLIC_IPFS_GATEWAY;
 
@@ -119,11 +121,11 @@ export function validateCid(cid: string): void {
   }
 }
 
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+export const MAX_FILE_SIZE = MAX_INVOICE_PDF_BYTES;
 
 export class FileSizeError extends Error {
   constructor(size: number) {
-    super(`File size ${size} bytes exceeds the 10MB limit.`);
+    super(`File size ${size} bytes exceeds the ${MAX_FILE_SIZE / (1024 * 1024)}MB limit.`);
     this.name = "FileSizeError";
   }
 }
@@ -258,7 +260,18 @@ function xhrUpload(
       cleanup();
       reject(new UploadAbortedError());
     };
-    xhr.send(form);
+    void getCsrfToken().then((csrfToken) => {
+      if (signal?.aborted) {
+        cleanup();
+        reject(new UploadAbortedError());
+        return;
+      }
+      if (csrfToken) xhr.setRequestHeader("x-kora-csrf", csrfToken);
+      xhr.send(form);
+    }).catch((err) => {
+      cleanup();
+      reject(err);
+    });
   });
 }
 
@@ -311,12 +324,14 @@ export async function uploadInvoiceMetadata(
   }
   const token = authToken || createMockUploadToken(walletAddress);
   const res = await withRetry(
-    () =>
-      fetch(`/api/upload`, {
+    async () => {
+      const csrfToken = await getCsrfToken();
+      return fetch(`/api/upload`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(csrfToken ? { "x-kora-csrf": csrfToken } : {}),
         },
         body: JSON.stringify({
           walletAddress: walletAddress || "GABC1234567890TESTADDRESS",
@@ -327,7 +342,8 @@ export async function uploadInvoiceMetadata(
       }).then(async (r) => {
         if (!r.ok) throw new Error(`Metadata upload failed: ${r.status}`);
         return r.json() as Promise<{ cid: string }>;
-      }),
+      });
+    },
     3
   );
 
@@ -745,12 +761,14 @@ export async function uploadValidatedInvoiceMetadata(
   // Step 5: Upload metadata JSON to IPFS
   const token = createMockUploadToken(walletAddress);
   const metadataCid = await withRetry(
-    () =>
-      fetch(`/api/upload`, {
+    async () => {
+      const csrfToken = await getCsrfToken();
+      return fetch(`/api/upload`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(csrfToken ? { "x-kora-csrf": csrfToken } : {}),
         },
         body: JSON.stringify({
           walletAddress: walletAddress || "GABC1234567890TESTADDRESS",
@@ -761,7 +779,8 @@ export async function uploadValidatedInvoiceMetadata(
         if (!r.ok) throw new Error(`Metadata upload failed: ${r.status}`);
         const json = (await r.json()) as { cid: string };
         return json.cid;
-      }),
+      });
+    },
     3
   );
 
@@ -781,11 +800,13 @@ export async function unpinFromPinata(cid: string): Promise<boolean> {
   try {
     validateCid(cid);
     const token = createMockUploadToken();
+    const csrfToken = await getCsrfToken();
     const response = await fetch(`/api/upload`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        ...(csrfToken ? { "x-kora-csrf": csrfToken } : {}),
       },
       body: JSON.stringify({ cid }),
     });
@@ -833,18 +854,21 @@ export async function uploadJsonToPinata(
   const addr = walletAddress || "GABC1234567890TESTADDRESS";
   const token = authToken || createMockUploadToken(addr);
   const res = await withRetry(
-    () =>
-      fetch(`/api/upload`, {
+    async () => {
+      const csrfToken = await getCsrfToken();
+      return fetch(`/api/upload`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(csrfToken ? { "x-kora-csrf": csrfToken } : {}),
         },
         body: JSON.stringify({ walletAddress: addr, metadata, name: _name }),
       }).then(async (r) => {
         if (!r.ok) throw new Error(`Metadata upload failed: ${r.status}`);
         return r.json() as Promise<{ cid: string }>;
-      }),
+      });
+    },
     3
   );
   validateCid(res.cid);

@@ -525,3 +525,51 @@ MIT © 2025 Kora Protocol Contributors
 
 <!-- handsoff-issue-871 -->
 - #871: i18n: WalletButton reconnect/EURC trustline toasts English-only
+
+## Wallet — Trustline Setup
+
+Stellar requires each account to establish a **trustline** before it can hold
+any non-native asset (USDC, EURC, etc.).  New wallets therefore start with a
+zero USDC balance and cannot fund invoices until a trustline is added.
+
+### USDC trustline
+
+The wallet dropdown shows an **Add USDC trustline** button whenever the
+connected wallet has a USDC balance of `0`.  Clicking it:
+
+1. Checks whether the trustline already exists (via `hasTrustline` in
+   `config/walletAssets.ts`) — if so, just refreshes the balance and returns.
+2. Calls `buildAddTrustlineTx(address, "usdc")` in `lib/stellar/contracts.ts`
+   to build a `changeTrust` Soroban XDR.
+3. Signs it through the connected wallet extension.
+4. Submits to the network and polls for confirmation.
+5. Refreshes the balance query so the displayed USDC balance updates immediately.
+
+The CTA is hidden once the USDC balance is non-zero (trustline established and
+funded).
+
+#### Mainnet / custom issuer
+
+By default the USDC issuer is Circle's canonical address.  For mainnet or
+custom deployments, override it with:
+
+```bash
+NEXT_PUBLIC_USDC_ISSUER=G<your_mainnet_usdc_issuer>
+```
+
+The env var is read in `config/walletAssets.ts` → `resolveUsdcIssuer()` and
+falls back to the testnet issuer when absent.
+
+### EURC trustline
+
+An **Add EURC trustline** button is always present in testnet mode.  It follows
+the identical flow above using `buildAddTrustlineTx(address, "eurc")`.
+
+### Edge cases
+
+| Scenario | Behaviour |
+|----------|-----------|
+| Trustline exists, balance zero | CTA hidden (balance is non-zero internally) — user must fund via testnet faucet |
+| User rejects wallet signing | `addUsdcTrustlineOnTestnet` throws; error toast shown via `wallet.trustline.usdc.error` |
+| Network mismatch (wrong chain) | CTA is disabled via `hasNetworkMismatch` guard |
+| Mainnet vs testnet issuer mismatch | Set `NEXT_PUBLIC_USDC_ISSUER` to the correct mainnet issuer |

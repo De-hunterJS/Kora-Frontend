@@ -84,18 +84,82 @@ export function buildLabelMessage(address: string, label: string): string {
   return `kora-label:${address}:${label}`;
 }
 
-/** Current canonical message format for new attestations. */
-export function buildLabelMessageV1(address: string, label: string, signedAt: number): string {
-  return `${LABEL_MESSAGE_V1_PREFIX}${address}:${label}:${signedAt}`;
+/**
+ * Check if an address book entry has a cryptographically verified label.
+ * Returns true if signedLabel exists and passes cryptographic verification.
+ */
+export function isLabelVerified(entry: { label: string; signedLabel?: SignedLabel }): boolean {
+  if (!entry.signedLabel) return false;
+  return verifySignedLabel(entry.signedLabel);
 }
 
-function verifyEd25519(address: string, message: string, signatureHex: string): boolean {
+/**
+ * Verify a signed label attestation cryptographically using Ed25519.
+ * 
+ * This function:
+ * 1. Validates the attestation format and structure
+ * 2. Reconstructs the signed message from the address and label
+ * 3. Verifies the Ed25519 signature using the Stellar SDK
+ * 4. Ensures the signature was created by the wallet at the given address
+ * 
+ * Fails closed when:
+ * - Any format check fails
+ * - Signature verification fails
+ * - Public key cannot be used for verification
+ * 
+ * @param attestation - The SignedLabel object to verify
+ * @returns true if the signature is cryptographically valid, false otherwise
+ */
+export function verifySignedLabel(attestation: SignedLabel): boolean {
   try {
-    const keypair = Keypair.fromPublicKey(address);
-    const msgBytes = Buffer.from(message, "utf8");
-    const sigBytes = Buffer.from(signatureHex, "hex");
-    if (sigBytes.length !== 64) return false;
-    return keypair.verify(msgBytes, sigBytes);
+    // 1. Validate attestation structure
+    if (!attestation.address || !attestation.label || !attestation.signature) {
+      return false;
+    }
+
+    // 2. Validate address format (Stellar public key)
+    if (!/^G[A-Z2-7]{55}$/.test(attestation.address)) {
+      return false;
+    }
+
+    // 3. Validate signature format (128 hex chars = 64 bytes for Ed25519 signature)
+    if (!/^[a-fA-F0-9]{128}$/.test(attestation.signature)) {
+      return false;
+    }
+
+    // 4. Validate timestamp is reasonable (not too far in future, not too old)
+    const now = Date.now();
+    const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+    const maxFuture = 60 * 1000; // 1 minute into future (clock skew tolerance)
+    
+    if (attestation.signedAt > now + maxFuture || now - attestation.signedAt > maxAge) {
+      return false;
+    }
+
+    // 5. Reconstruct the signed message
+    const message = buildLabelMessage(attestation.address, attestation.label);
+    const messageBuffer = Buffer.from(message, "utf8");
+
+    // 6. Convert hex signature to buffer
+    const signatureBuffer = Buffer.from(attestation.signature, "hex");
+
+    // 7. Verify Ed25519 signature using Stellar SDK
+    // eslint-disable-next-line
+    const { Keypair } = require("@stellar/stellar-sdk") as typeof import("@stellar/stellar-sdk");
+    
+    try {
+      const keypair = Keypair.fromPublicKey(attestation.address);
+      const isValid = keypair.verify(messageBuffer, signatureBuffer);
+      
+      if (!isValid) {
+        return false;
+      }
+    } catch {
+      // Keypair creation or verification failed
+      return false;
+    }
+
+    return true;
   } catch {
     return false;
   }

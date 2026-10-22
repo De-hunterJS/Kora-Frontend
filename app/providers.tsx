@@ -56,6 +56,7 @@ import {
   MARKETPLACE_CACHE_MAX_AGE_MS,
   shouldPersistMarketplaceQuery,
 } from "@/lib/queryPersistence";
+import { AppLoadingShell } from "@/components/ui/AppLoadingShell";
 
 // Pre-load both locale message files at the module level so they are
 // bundled and available synchronously on the client.
@@ -127,7 +128,13 @@ function SettingsWalletSync() {
   return null;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
   const onboardingTourEnabled = useFeatureFlag("onboarding-tour");
   const devtoolsEnabled = useFeatureFlag("devtools");
   const [queryClient] = useState(
@@ -137,6 +144,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: { staleTime: 30_000, retry: 1 },
         },
       })
+  );
+
+  /**
+   * isPersistenceReady (#1017)
+   *
+   * Tracks whether `persistQueryClientRestore` has finished (or errored).
+   * While false we render `AppLoadingShell` instead of the blank app shell so
+   * users never see an empty white screen on slow devices or after install.
+   *
+   * SSR: typeof window === "undefined" means we're server-rendering — skip
+   * persistence entirely and set ready = true immediately so the server renders
+   * the full tree without flashing the skeleton on the first paint.
+   */
+  const [isPersistenceReady, setIsPersistenceReady] = useState(
+    () => typeof window === "undefined"
   );
 
   // The tree renders immediately rather than waiting for the restore: gating it
@@ -168,6 +190,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         });
       } catch (error) {
         console.warn("[QueryPersistence] Failed to restore marketplace cache.", error);
+      } finally {
+        // Always ungate — even on error, the app must become usable (#1017).
+        if (!cancelled) setIsPersistenceReady(true);
       }
     };
 
@@ -199,8 +224,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LocaleProvider allMessages={ALL_MESSAGES}>
+      <LocaleProvider allMessages={ALL_MESSAGES} initialLocale={initialLocale}>
         <ThemeProvider>
+          {/* Show AppLoadingShell until IndexedDB restore completes (#1017).
+              QueryClientProvider and ThemeProvider are always mounted so the
+              query client is available throughout — children are hidden, not
+              unmounted, so providers can initialise without double-fetching. */}
+          {!isPersistenceReady && <AppLoadingShell />}
+          <div
+            style={isPersistenceReady ? undefined : { display: "none" }}
+            aria-hidden={!isPersistenceReady}
+          >
           {/* Raises the re-verification modal that `useVerifiedAction` awaits
               (#681). It was imported here but never mounted, so every gated
               action — fund, repay, and now claim — silently fell back to the
@@ -223,6 +257,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <ReactQueryDevtools initialIsOpen={false} />
           )}
           </VerificationProvider>
+          </div>
         </ThemeProvider>
       </LocaleProvider>
     </QueryClientProvider>
