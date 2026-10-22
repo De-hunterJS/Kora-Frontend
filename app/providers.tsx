@@ -128,7 +128,13 @@ function SettingsWalletSync() {
   return null;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
   const onboardingTourEnabled = useFeatureFlag("onboarding-tour");
   const devtoolsEnabled = useFeatureFlag("devtools");
   const [queryClient] = useState(
@@ -218,7 +224,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LocaleProvider allMessages={ALL_MESSAGES}>
+      <LocaleProvider allMessages={ALL_MESSAGES} initialLocale={initialLocale}>
         <ThemeProvider>
           {/* Show AppLoadingShell until IndexedDB restore completes (#1017).
               QueryClientProvider and ThemeProvider are always mounted so the

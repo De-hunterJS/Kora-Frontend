@@ -711,6 +711,35 @@ test.describe("Marketplace - Virtualized Grid Mobile Scroll", () => {
     expect(overflow).toBeLessThanOrEqual(1);
   });
 
+  test("scrollMargin tracks the list offset and refreshes after a resize", async ({ page }) => {
+    const virtualGrid = page.locator('[data-virtualized="true"]');
+    await expect(virtualGrid).toBeVisible();
+
+    // Drift between the measured document offset and the value the virtualizer
+    // is using must stay near zero or row transforms land in the wrong place.
+    const drift = () =>
+      virtualGrid.evaluate((el: HTMLElement) => {
+        const fromState = Number(el.getAttribute("data-scroll-margin"));
+        const measured = Math.round(
+          el.getBoundingClientRect().top + window.scrollY,
+        );
+        return Math.abs(fromState - measured);
+      });
+
+    await expect
+      .poll(drift, { message: "initial scrollMargin should match the list offset" })
+      .toBeLessThanOrEqual(2);
+
+    // Rotation / breakpoint change reflows the filter bar above the list.
+    await page.setViewportSize({ width: 375, height: 667 });
+
+    await expect
+      .poll(drift, {
+        message: "scrollMargin should recalculate after the viewport changes",
+      })
+      .toBeLessThanOrEqual(2);
+  });
+
   test("scrolling down on mobile renders new cards within DOM budget", async ({ page }) => {
     const cards = page.locator("a[href^='/marketplace/']");
 

@@ -1,4 +1,24 @@
 {
+  "metadata": {
+    "investorDashboard": {
+      "title": "Investor Dashboard",
+      "description": "Track your positions, yield and portfolio performance on Kora Protocol.",
+      "ogDescription": "Monitor your Kora Protocol investments, yield and repayment activity.",
+      "ogImageAlt": "Kora Protocol investor dashboard"
+    },
+    "smeDashboard": {
+      "title": "SME Dashboard",
+      "description": "Manage your invoices, financing and repayments on Kora Protocol.",
+      "ogDescription": "Track invoice financing and repayments from your Kora Protocol SME dashboard.",
+      "ogImageAlt": "Kora Protocol SME dashboard"
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Manage your Kora Protocol notifications, thresholds and preferences.",
+      "ogDescription": "Configure notifications, concentration thresholds and preferences on Kora Protocol.",
+      "ogImageAlt": "Kora Protocol settings"
+    }
+  },
   "nav": {
     "marketplace": "Marketplace",
     "invest": "Invest",
@@ -1015,6 +1035,10 @@
     "gotIt": "Got it"
   },
   "settings": {
+    "error": {
+      "title": "Couldn't load settings",
+      "description": "Something went wrong while loading your settings. Please try again."
+    },
     "title": "Settings",
     "subtitle": "Manage notification preferences and your product tour.",
     "connectTitle": "Connect your wallet",

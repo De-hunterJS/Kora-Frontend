@@ -1,4 +1,24 @@
 {
+  "metadata": {
+    "investorDashboard": {
+      "title": "لوحة المستثمر",
+      "description": "تابع مراكزك وعائدك وأداء محفظتك على Kora Protocol.",
+      "ogDescription": "راقب استثماراتك وعائدك ونشاط السداد في Kora Protocol.",
+      "ogImageAlt": "لوحة المستثمر في Kora Protocol"
+    },
+    "smeDashboard": {
+      "title": "لوحة المنشآت الصغيرة والمتوسطة",
+      "description": "أدر فواتيرك وتمويلك ومدفوعاتك على Kora Protocol.",
+      "ogDescription": "تابع تمويل الفواتير والمدفوعات من لوحة منشأتك على Kora Protocol.",
+      "ogImageAlt": "لوحة المنشآت الصغيرة والمتوسطة في Kora Protocol"
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "description": "أدر إشعاراتك وحدودك وتفضيلاتك في Kora Protocol.",
+      "ogDescription": "اضبط الإشعارات وحدود التركيز والتفضيلات في Kora Protocol.",
+      "ogImageAlt": "إعدادات Kora Protocol"
+    }
+  },
   "nav": {
     "marketplace": "السوق",
     "invest": "استثمر",
@@ -1010,6 +1030,10 @@
     "gotIt": "حسنًا"
   },
   "settings": {
+    "error": {
+      "title": "تعذّر تحميل الإعدادات",
+      "description": "حدث خطأ أثناء تحميل إعداداتك. يرجى المحاولة مرة أخرى."
+    },
     "title": "الإعدادات",
     "subtitle": "إدارة تفضيلات الإشعارات وجولة المنتج.",
     "connectTitle": "اربط محفظتك",

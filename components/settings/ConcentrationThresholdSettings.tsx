@@ -98,7 +98,7 @@ function ThresholdControl({ dimension, value, onChange }: ThresholdControlProps)
             aria-label={t("percentageAria", { dimension: label })}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={(e) => commit(e.target.value)}
-            className="h-8 w-16 rounded-lg border border-border bg-background px-2 text-right text-sm text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="h-8 w-16 rounded-lg border border-border bg-background px-2 text-end text-sm text-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span className="text-sm text-muted-foreground" aria-hidden="true">
             %

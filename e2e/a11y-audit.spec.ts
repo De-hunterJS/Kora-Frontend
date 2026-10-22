@@ -13,6 +13,7 @@
 
 import { test, expect } from "@playwright/test";
 import { injectAxe, getViolations } from "axe-playwright";
+import { injectWalletStubs } from "./helpers/mock-wallet";
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -305,3 +306,130 @@ test.describe("Accessibility audit — create invoice (/invoice/create)", () => 
   });
 });
 
+
+// ─── RTL layout smoke — settings & secondary (Issue #1012) ───────────────────
+//
+// The axe scans above prove contrast/roles; these assert the things axe cannot:
+// mirrored layout (dir="rtl"), no horizontal scroll at a 390px phone width, and
+// that portalled surfaces inherit the document direction rather than snapping
+// back to LTR.
+
+async function expectNoHorizontalOverflow(page: Parameters<typeof injectAxe>[0]) {
+  await page.evaluate(() => document.fonts?.ready);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const doc = document.documentElement;
+          return (
+            Math.max(doc.scrollWidth, document.body.scrollWidth) -
+            window.innerWidth
+          );
+        }),
+      { message: "page should not scroll horizontally at 390px" },
+    )
+    .toBeLessThanOrEqual(1);
+}
+
+function suppressOverlays(page: Parameters<typeof injectAxe>[0]) {
+  return page.addInitScript(() => {
+    localStorage.setItem("kora-tour-done", "true");
+    localStorage.setItem("kora-changelog-seen-version", "0.1.0");
+  });
+}
+
+async function gotoArabic(
+  page: Parameters<typeof injectAxe>[0],
+  path: string,
+) {
+  // `page.goto` has no `headers` option, so set the locale cookie the
+  // middleware reads instead of relying on Accept-Language.
+  await page.context().addCookies([
+    { name: "kora-locale", value: "ar", url: "http://localhost:3000" },
+  ]);
+  await page.goto(path, { waitUntil: "domcontentloaded" });
+  // The dev-only feature-flag panel is fixed above page content and would
+  // intercept pointer events in these layout tests.
+  await page.addStyleTag({
+    content: '[data-testid="feature-flag-panel"]{display:none!important}',
+  });
+  // Let the client bundle hydrate so handlers are attached before interaction.
+  await page.waitForTimeout(2_000);
+}
+
+test.describe("RTL layout smoke — settings (/settings, ar)", () => {
+  test("disconnected gate mirrors, keeps the CTA reachable, and does not scroll horizontally", async ({
+    page,
+  }) => {
+    await suppressOverlays(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoArabic(page, "/settings");
+
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+
+    const connectCta = page
+      .getByRole("main")
+      .getByRole("button", { name: /ربط المحفظة|connect wallet/i });
+    await expect(connectCta).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("portalled wallet modal inherits the document direction", async ({ page }) => {
+    await suppressOverlays(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoArabic(page, "/settings");
+
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: /ربط المحفظة|connect wallet/i })
+      .click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+    // Radix portals mount on <body>; direction must be inherited, not reset.
+    await expect
+      .poll(() => dialog.evaluate((el) => getComputedStyle(el).direction))
+      .toBe("rtl");
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("connected preference toggles remain usable and mirrored", async ({
+    page,
+    context,
+  }) => {
+    await injectWalletStubs(context);
+    await suppressOverlays(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoArabic(page, "/settings");
+
+    const toggle = page.getByRole("switch").first();
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+
+    const initial = await toggle.getAttribute("aria-checked");
+    await toggle.click();
+    await expect(toggle).not.toHaveAttribute("aria-checked", initial as string);
+
+    await expectNoHorizontalOverflow(page);
+  });
+});
+
+test.describe("RTL layout smoke — secondary market (/secondary, ar)", () => {
+  test("filters stay reachable and the page does not scroll horizontally", async ({
+    page,
+  }) => {
+    await suppressOverlays(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await gotoArabic(page, "/secondary");
+
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    await expect(
+      page.getByRole("heading", { name: /السوق الثانوي|secondary market/i }),
+    ).toBeVisible();
+
+    // Mobile filter trigger is the primary control at this width.
+    await expect(
+      page.getByRole("button", { name: /تصفية|filter/i }).first(),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+  });
+});

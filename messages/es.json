@@ -1,4 +1,24 @@
 {
+  "metadata": {
+    "investorDashboard": {
+      "title": "Panel del inversor",
+      "description": "Sigue tus posiciones, rendimiento y el desempeño de tu cartera en Kora Protocol.",
+      "ogDescription": "Supervisa tus inversiones, rendimiento y actividad de reembolso en Kora Protocol.",
+      "ogImageAlt": "Panel del inversor de Kora Protocol"
+    },
+    "smeDashboard": {
+      "title": "Panel de pymes",
+      "description": "Gestiona tus facturas, financiación y reembolsos en Kora Protocol.",
+      "ogDescription": "Sigue la financiación de facturas y los reembolsos desde tu panel de pymes de Kora Protocol.",
+      "ogImageAlt": "Panel de pymes de Kora Protocol"
+    },
+    "settings": {
+      "title": "Configuración",
+      "description": "Gestiona tus notificaciones, umbrales y preferencias de Kora Protocol.",
+      "ogDescription": "Configura notificaciones, umbrales de concentración y preferencias en Kora Protocol.",
+      "ogImageAlt": "Configuración de Kora Protocol"
+    }
+  },
   "nav": {
     "marketplace": "Mercado",
     "invest": "Invertir",
@@ -1010,6 +1030,10 @@
     "gotIt": "Entendido"
   },
   "settings": {
+    "error": {
+      "title": "No se pudo cargar la configuración",
+      "description": "Algo salió mal al cargar tu configuración. Inténtalo de nuevo."
+    },
     "title": "Configuración",
     "subtitle": "Administra las preferencias de notificaciones y el recorrido del producto.",
     "connectTitle": "Conecta tu billetera",
