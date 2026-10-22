@@ -42,6 +42,7 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { RangeSlider } from "@/components/ui/range-slider";
 import { ComparisonBar } from "@/components/marketplace/ComparisonBar";
 import ActiveFilterChips from "@/components/marketplace/ActiveFilterChips";
+import PresetImportExport from "@/components/marketplace/PresetImportExport";
 import { CategoryTaxonomyPreview } from "@/components/marketplace/CategoryTaxonomyPreview";
 import { useFeatureFlag } from "@/lib/featureFlags";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -841,6 +842,9 @@ function MarketplaceContent() {
             onRename={renamePreset}
             onDelete={deletePreset}
           />
+          <div className="mt-3">
+            <PresetImportExport />
+          </div>
         </div>
 
         {/* 2-Column Responsive Layout */}
