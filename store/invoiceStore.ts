@@ -286,6 +286,147 @@ export function hydratePresets(value: unknown): SavedMarketplacePreset[] {
   }).slice(0, MAX_SAVED_PRESETS);
 }
 
+// ─── Preset import/export (portable artifact) ────────────────────────────────
+// Serialized artifact shape: `{ "version": 1, "presets": SavedMarketplacePreset[] }`.
+// A bare array is also accepted for forward/backward compatibility. Unknown
+// fields on a preset are tolerated and stripped on import.
+
+/** Reject pasted/file payloads larger than 64 KiB (fail closed). */
+export const MAX_PRESET_IMPORT_BYTES = 64 * 1024;
+/** Current version of the portable preset artifact envelope. */
+export const PRESET_ARTIFACT_VERSION = 1;
+const MAX_PRESET_NAME_LENGTH = 80;
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+function sanitizePreset(candidate: unknown): SavedMarketplacePreset | null {
+  if (!candidate || typeof candidate !== "object") return null;
+  const p = candidate as Record<string, unknown>;
+  if (typeof p.id !== "string" || !p.id) return null;
+  if (typeof p.name !== "string" || !p.name.trim()) return null;
+  if (typeof p.createdAt !== "string" || !p.createdAt) return null;
+  const f = p.filters as Record<string, unknown> | null;
+  const s = p.sort as Record<string, unknown> | null;
+  if (!f || !s) return null;
+  if (!isStringArray(f.categories) || !isStringArray(f.jurisdictions) || !isStringArray(f.riskTiers)) return null;
+  if (!Array.isArray(f.aprRange) || f.aprRange.length !== 2) return null;
+  const [minApr, maxApr] = f.aprRange as unknown[];
+  if (typeof minApr !== "number" || typeof maxApr !== "number") return null;
+  if (!Number.isFinite(minApr) || !Number.isFinite(maxApr)) return null;
+  if (typeof f.activeOnly !== "boolean" || typeof f.showExpired !== "boolean") return null;
+  if (!["apr", "amount", "dueDate", "listed"].includes(s.sortBy as string)) return null;
+  if (!["asc", "desc"].includes(s.sortDir as string)) return null;
+  return {
+    id: p.id,
+    name: p.name.trim().slice(0, MAX_PRESET_NAME_LENGTH),
+    filters: {
+      categories: [...(f.categories as string[])],
+      jurisdictions: [...(f.jurisdictions as string[])],
+      riskTiers: [...(f.riskTiers as string[])],
+      aprRange: [minApr, maxApr],
+      activeOnly: f.activeOnly as boolean,
+      showExpired: f.showExpired as boolean,
+    },
+    sort: { sortBy: s.sortBy as SortState["sortBy"], sortDir: s.sortDir as SortState["sortDir"] },
+    createdAt: p.createdAt,
+  };
+}
+
+export interface PresetImportResult {
+  imported: number;
+  skipped: number;
+  error?: string;
+}
+
+/**
+ * Strictly validate an untrusted preset artifact before hydration.
+ * Returns sanitized presets plus counts, or an actionable `error` (fail closed).
+ */
+export function parsePresetImport(raw: string): { presets: SavedMarketplacePreset[] } | { error: string } {
+  if (typeof raw !== "string" || !raw.trim()) {
+    return { error: "Paste exported preset JSON or choose a file to import." };
+  }
+  if (new TextEncoder().encode(raw).length > MAX_PRESET_IMPORT_BYTES) {
+    return { error: `Import is larger than ${MAX_PRESET_IMPORT_BYTES / 1024} KiB — refusing to parse.` };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { error: "Invalid JSON — export presets again and retry." };
+  }
+  // Accept both the versioned envelope and a bare array (older exports).
+  const list = Array.isArray(parsed)
+    ? parsed
+    : (parsed as { presets?: unknown }).presets;
+  if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+    const version = (parsed as { version?: unknown }).version;
+    if (version !== undefined && version !== PRESET_ARTIFACT_VERSION) {
+      return { error: `Unsupported preset version ${String(version)} — expected version ${PRESET_ARTIFACT_VERSION}.` };
+    }
+  }
+  if (!Array.isArray(list)) {
+    return { error: "Preset file must contain a list of presets." };
+  }
+  if (list.length === 0) {
+    return { error: "No presets found in this file." };
+  }
+  if (list.length > MAX_SAVED_PRESETS) {
+    return { error: `Too many presets (${list.length}) — maximum is ${MAX_SAVED_PRESETS}.` };
+  }
+  const presets: SavedMarketplacePreset[] = [];
+  for (let i = 0; i < list.length; i++) {
+    const clean = sanitizePreset(list[i]);
+    if (!clean) {
+      return { error: `Preset #${i + 1} is invalid (needs id, name, filters, sort) — import aborted, nothing changed.` };
+    }
+    presets.push(clean);
+  }
+  return { presets };
+}
+
+/** Build a shareable artifact string for the given presets. */
+export function buildPresetArtifact(presets: SavedMarketplacePreset[]): string {
+  return JSON.stringify({ version: PRESET_ARTIFACT_VERSION, presets });
+}
+
+/**
+ * Merge imported presets into existing ones without wiping unrelated state.
+ * Same-id presets are skipped; duplicate names get a numeric suffix.
+ */
+export function mergePresets(
+  existing: SavedMarketplacePreset[],
+  incoming: SavedMarketplacePreset[]
+): { merged: SavedMarketplacePreset[]; imported: number; skipped: number } {
+  const merged = [...existing];
+  const ids = new Set(existing.map((p) => p.id));
+  const names = new Set(existing.map((p) => p.name.toLowerCase()));
+  let imported = 0;
+  let skipped = 0;
+  for (const preset of incoming) {
+    if (ids.has(preset.id)) {
+      skipped++;
+      continue;
+    }
+    let name = preset.name;
+    let n = 2;
+    while (names.has(name.toLowerCase())) {
+      name = `${preset.name} (${n++})`;
+    }
+    if (merged.length >= MAX_SAVED_PRESETS) {
+      skipped++;
+      continue;
+    }
+    ids.add(preset.id);
+    names.add(name.toLowerCase());
+    merged.push({ ...preset, name });
+    imported++;
+  }
+  return { merged, imported, skipped };
+}
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 const SEARCH_HISTORY_KEY = "kora-search-history";
@@ -337,6 +478,10 @@ interface InvoiceStore {
   renamePreset: (id: string, name: string) => void;
   deletePreset: (id: string) => void;
   loadPreset: (id: string) => boolean;
+  /** Portable export of saved presets (versioned JSON artifact). */
+  exportPresetsText: () => string;
+  /** Validate + merge a portable artifact; never wipes unrelated state. */
+  importPresets: (raw: string) => PresetImportResult;
   setSearchQuery: (q: string) => void;
   clearSearchHistory: () => void;
   setSelectedInvoice: (invoice: Invoice | null) => void;
@@ -381,6 +526,7 @@ export const useInvoiceStore = create<InvoiceStore>()(
       selectedInvoice: null,
       createDraft: { currency: "USDC" },
       comparisonList: [],
+      savedPresets: [],
 
       setInvoices: (invoices) => set({ invoices }),
 
@@ -554,6 +700,52 @@ export const useInvoiceStore = create<InvoiceStore>()(
       setComparisonList: (ids) =>
         set({ comparisonList: normalizeComparisonList(ids) }),
 
+      savePreset: (name) => {
+        const trimmed = name.trim().slice(0, 80);
+        if (!trimmed) return null;
+        const { filters, sort } = get();
+        const preset: SavedMarketplacePreset = {
+          id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: trimmed,
+          filters: { ...filters, aprRange: [...filters.aprRange] as [number, number] },
+          sort: { ...sort },
+          createdAt: new Date().toISOString(),
+        };
+        set((s) => ({ savedPresets: [...s.savedPresets, preset].slice(-MAX_SAVED_PRESETS) }));
+        return preset;
+      },
+
+      renamePreset: (id, name) => {
+        const trimmed = name.trim().slice(0, 80);
+        if (!trimmed) return;
+        set((s) => ({
+          savedPresets: s.savedPresets.map((p) => (p.id === id ? { ...p, name: trimmed } : p)),
+        }));
+      },
+
+      deletePreset: (id) =>
+        set((s) => ({ savedPresets: s.savedPresets.filter((p) => p.id !== id) })),
+
+      loadPreset: (id) => {
+        const preset = get().savedPresets.find((p) => p.id === id);
+        if (!preset) return false;
+        set({ filters: { ...preset.filters }, sort: { ...preset.sort } });
+        return true;
+      },
+
+      exportPresetsText: () => buildPresetArtifact(get().savedPresets),
+
+      importPresets: (raw) => {
+        const parsed = parsePresetImport(raw);
+        if ("error" in parsed) return { imported: 0, skipped: 0, error: parsed.error };
+        let result: PresetImportResult = { imported: 0, skipped: 0 };
+        set((s) => {
+          const { merged, imported, skipped } = mergePresets(s.savedPresets, parsed.presets);
+          result = { imported, skipped };
+          return { savedPresets: merged };
+        });
+        return result;
+      },
       removeFromComparison: (id) =>
         set((s) => ({
           comparisonList: normalizeComparisonList(

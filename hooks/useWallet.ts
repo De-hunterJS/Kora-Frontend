@@ -49,7 +49,7 @@ const WALLET_NETWORK =
     ? WalletNetwork.PUBLIC
     : WalletNetwork.TESTNET;
 
-function getKit(): StellarWalletsKit {
+export function getKit(): StellarWalletsKit {
   if (!kit) {
     kit = new StellarWalletsKit({
       network: WALLET_NETWORK,

@@ -20,6 +20,8 @@ type AddressBookEntry = {
 export function AddressBook({ onClose, onSelect }: { onClose?: () => void; onSelect?: (entry: AddressBookEntry) => void }) {
   const t = useTranslations("addressBook");
   const { addressBook, addressBookGroups, addAddressBookEntry, updateAddressBookEntry, removeAddressBookEntry, toggleAddressBookFavorite, addAddressBookGroup, updateAddressBookGroup, removeAddressBookGroup } = useWalletStore();
+  const connectedAddress = useWalletStore((s) => s.address);
+  const publicKey = useWalletStore((s) => s.publicKey);
   const [addr, setAddr] = useState("");
   const [label, setLabel] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
@@ -168,32 +170,32 @@ export function AddressBook({ onClose, onSelect }: { onClose?: () => void; onSel
     if (!entry.label) return;
     setSigningId(entry.id);
     try {
-      // Build the message to sign using the standardized format
+      const connectedKey = publicKey || connectedAddress;
+      if (!connectedKey) {
+        toast.error(t("walletNotConnected"));
+        return;
+      }
+      // Sign the canonical label payload with the connected wallet so the
+      // attestation proves ownership of the labelling key (#1106 + #1062 verify).
+      const signedAt = Date.now();
       const message = buildLabelMessage(entry.address, entry.label);
-      
-      // In production, this would use the wallet kit to sign the message:
-      // 1. Get the wallet kit instance (StellarWalletsKit)
-      // 2. Call walletKit.signMessage({ message, publicKey })
-      // 3. Convert the signature to hex format
-      // 4. Verify locally that verifySignedLabel(signedLabel) returns true
-      //
-      // For testing purposes, we use a mock signature generator.
-      // Real implementation would look like:
-      //   const { signature, publicKey } = await walletKit.signMessage({ message, publicKey: entry.address });
-      //   const signatureHex = Buffer.from(signature, 'base64').toString('hex');
-      
-      // MOCK: Generate a test signature (replace with real wallet kit signing)
-      const mockSignature = Array.from({ length: 64 }, () => 
-        Math.floor(Math.random() * 16).toString(16)
-      ).join("");
-      
+      const { getKit } = await import("@/hooks/useWallet");
+      const { result } = await (getKit() as any).signMessage({
+        message,
+        publicKey: connectedKey,
+      });
+      const signature =
+        typeof result === "string"
+          ? result
+          : Buffer.from(result, "base64").toString("hex");
+
       const signedLabel: SignedLabel = {
         address: entry.address,
         label: entry.label,
-        signature: mockSignature,
-        signedAt: Date.now(),
+        signature,
+        signedAt,
       };
-      
+
       updateAddressBookEntry(entry.id, { signedLabel });
       toast.success(t("labelSigned"));
     } catch (error) {
