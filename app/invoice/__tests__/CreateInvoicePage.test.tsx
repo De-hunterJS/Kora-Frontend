@@ -570,3 +570,144 @@ describe("Step 2 — Financing Terms", () => {
     expect(screen.getByRole("button", { name: /back/i })).not.toBeDisabled();
   });
 });
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP PERSISTENCE TESTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Step persistence — sessionStorage + ?step= param", () => {
+  const WIZARD_STEP_KEY = "kora-invoice-create-step";
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.mocked(useWallet).mockReturnValue({
+      isConnected: true,
+      address: "GTEST1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDE",
+      signTransaction: mockSignTransaction,
+      isVerified: false,
+      checkVerification: vi.fn(() => false),
+    } as any);
+  });
+
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("writes step 0 to sessionStorage on initial render", async () => {
+    setup();
+    await waitFor(() =>
+      expect(sessionStorage.getItem(WIZARD_STEP_KEY)).toBe("0")
+    );
+  });
+
+  it("writes step 1 to sessionStorage after advancing from step 0", async () => {
+    const { user } = setup();
+    await fillStep1(user);
+    const nextBtn = screen.getByRole("button", { name: /next/i });
+    await waitFor(() => expect(nextBtn).not.toBeDisabled());
+    fireEvent.click(nextBtn);
+    await screen.findByText(/live financing preview/i);
+    await waitFor(() =>
+      expect(sessionStorage.getItem(WIZARD_STEP_KEY)).toBe("1")
+    );
+  });
+
+  it("restores step 1 from sessionStorage when form data satisfies step 0 schema", async () => {
+    // Pre-seed a draft that satisfies step 0 so the restored step is allowed
+    useInvoiceStore.setState({
+      createDraft: {
+        currency: "USDC",
+        invoiceNumber: "INV-2024-TEST",
+        debtorName: "Acme Corporation Ltd",
+        debtorAddress: "123 Business St, Nairobi, Kenya",
+        amount: 50000,
+        dueDate: futureDate(90),
+        jurisdiction: "KE",
+        category: "technology",
+        debtorPrivacy: "full",
+      },
+    });
+    sessionStorage.setItem(WIZARD_STEP_KEY, "1");
+    setup();
+    // Should land on step 1 (Financing Terms)
+    await screen.findByText(/live financing preview/i);
+  });
+
+  it("clamps restored step to 0 if form data does not satisfy step 0 schema", async () => {
+    // Empty draft — step 0 schema will fail
+    sessionStorage.setItem(WIZARD_STEP_KEY, "2");
+    setup();
+    // Should stay on step 0
+    await waitFor(() =>
+      expect(screen.getByLabelText(/invoice number/i)).toBeInTheDocument()
+    );
+    expect(screen.queryByText(/upload/i)).not.toBeInTheDocument();
+  });
+
+  it("?step=1 query param restores step 1 when form data satisfies schema", async () => {
+    useInvoiceStore.setState({
+      createDraft: {
+        currency: "USDC",
+        invoiceNumber: "INV-QP-001",
+        debtorName: "Query Param Corp",
+        debtorAddress: "1 Param Street, Lagos, Nigeria",
+        amount: 20000,
+        dueDate: futureDate(60),
+        jurisdiction: "NG",
+        category: "finance",
+        debtorPrivacy: "full",
+      },
+    });
+    // Mock useSearchParams to return ?step=1
+    vi.mock("next/navigation", async () => {
+      const actual = await vi.importActual<typeof import("next/navigation")>("next/navigation");
+      return {
+        ...actual,
+        useSearchParams: () => new URLSearchParams("step=1"),
+        useRouter: () => ({ replace: vi.fn() }),
+      };
+    });
+    setup();
+    await screen.findByText(/live financing preview/i);
+  });
+
+  it("clears sessionStorage on successful mint", async () => {
+    sessionStorage.setItem(WIZARD_STEP_KEY, "2");
+    const { user } = setup();
+
+    // Navigate to step 2
+    await fillStep1(user);
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    await screen.findByText(/live financing preview/i);
+    await fillStep2(user);
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    await screen.findByText(/invoice document/i);
+
+    // Upload and submit
+    const file = mockPdfFile();
+    await uploadFile(user, file);
+    const mintBtn = await screen.findByRole("button", { name: /mint invoice/i });
+    fireEvent.click(mintBtn);
+
+    await waitFor(() =>
+      expect(sessionStorage.getItem(WIZARD_STEP_KEY)).toBeNull()
+    );
+  });
+
+  it("ignores stale step index that is out of range (> 2)", async () => {
+    sessionStorage.setItem(WIZARD_STEP_KEY, "99");
+    setup();
+    await waitFor(() =>
+      expect(screen.getByLabelText(/invoice number/i)).toBeInTheDocument()
+    );
+  });
+
+  it("ignores non-numeric step value in sessionStorage", async () => {
+    sessionStorage.setItem(WIZARD_STEP_KEY, "not-a-number");
+    setup();
+    await waitFor(() =>
+      expect(screen.getByLabelText(/invoice number/i)).toBeInTheDocument()
+    );
+  });
+});
