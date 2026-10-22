@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useWalletStore } from "@/store";
 import { isValidStellarAddress, truncateAddress } from "@/lib/utils";
 import { toast } from "sonner";
-import { buildLabelMessage, type SignedLabel } from "@/store/walletStore";
+import { buildLabelMessageV1, type SignedLabel } from "@/store/walletStore";
 
 type AddressBookEntry = {
   id: string;
@@ -20,6 +20,8 @@ type AddressBookEntry = {
 export function AddressBook({ onClose, onSelect }: { onClose?: () => void; onSelect?: (entry: AddressBookEntry) => void }) {
   const t = useTranslations("addressBook");
   const { addressBook, addressBookGroups, addAddressBookEntry, updateAddressBookEntry, removeAddressBookEntry, toggleAddressBookFavorite, addAddressBookGroup, updateAddressBookGroup, removeAddressBookGroup } = useWalletStore();
+  const connectedAddress = useWalletStore((s) => s.address);
+  const publicKey = useWalletStore((s) => s.publicKey);
   const [addr, setAddr] = useState("");
   const [label, setLabel] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
@@ -168,22 +170,32 @@ export function AddressBook({ onClose, onSelect }: { onClose?: () => void; onSel
     if (!entry.label) return;
     setSigningId(entry.id);
     try {
-      // Build the message to sign
-      const message = buildLabelMessage(entry.address, entry.label);
-      
-      // For now, create a mock signature (in production, use wallet kit to sign)
-      // The actual signing would use walletKit.signMessage({ message, publicKey })
-      const mockSignature = Array.from({ length: 64 }, () => 
-        Math.floor(Math.random() * 16).toString(16)
-      ).join("");
-      
+      const connectedKey = publicKey || connectedAddress;
+      if (!connectedKey) {
+        toast.error(t("walletNotConnected"));
+        return;
+      }
+      // Sign the canonical v1 payload with the connected wallet so the
+      // attestation proves ownership of the labelling key.
+      const signedAt = Date.now();
+      const message = buildLabelMessageV1(entry.address, entry.label, signedAt);
+      const { getKit } = await import("@/hooks/useWallet");
+      const { result } = await (getKit() as any).signMessage({
+        message,
+        publicKey: connectedKey,
+      });
+      const signature =
+        typeof result === "string"
+          ? result
+          : Buffer.from(result, "base64").toString("hex");
+
       const signedLabel: SignedLabel = {
         address: entry.address,
         label: entry.label,
-        signature: mockSignature,
-        signedAt: Date.now(),
+        signature,
+        signedAt,
       };
-      
+
       updateAddressBookEntry(entry.id, { signedLabel });
       toast.success(t("labelSigned"));
     } catch (error) {
