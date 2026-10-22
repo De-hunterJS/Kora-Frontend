@@ -42,9 +42,13 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { RangeSlider } from "@/components/ui/range-slider";
 import { ComparisonBar } from "@/components/marketplace/ComparisonBar";
 import ActiveFilterChips from "@/components/marketplace/ActiveFilterChips";
+import PresetImportExport from "@/components/marketplace/PresetImportExport";
 import { CategoryTaxonomyPreview } from "@/components/marketplace/CategoryTaxonomyPreview";
 import { useFeatureFlag } from "@/lib/featureFlags";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
+import { useMarketplaceScrollReset } from "@/hooks/useMarketplaceScrollReset";
+import { buildMarketplaceFilterFingerprint } from "@/lib/marketplaceFilterFingerprint";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { useRovingTabIndex } from "@/hooks/useRovingTabIndex";
 import { buildRangeSelection } from "@/lib/comparison";
@@ -241,7 +245,6 @@ function MarketplaceContent() {
   // Zustand Store
   const {
     filters,
-    sort,
     sortBy,
     searchQuery,
     searchHistory,
@@ -249,11 +252,6 @@ function MarketplaceContent() {
     updateSingleFilter,
     resetFilters,
     setSortBy,
-    savedPresets,
-    savePreset,
-    renamePreset,
-    deletePreset,
-    loadPreset,
     setSearchQuery,
     clearSearchHistory,
     setInvoices,
@@ -418,16 +416,6 @@ function MarketplaceContent() {
     }
   }, [allInvoices, setInvoices]);
 
-  const handleLoadPreset = (id: string) => {
-    if (!loadPreset(id)) return;
-    setPage(1);
-    queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
-  };
-
-  useEffect(() => {
-    if (invoices.length > 0) useInvoiceStore.getState().setInvoices(invoices);
-  }, [invoices]);
-
   // Client-side Search filter
   const filteredInvoices = useMemo(() => {
     if (!debouncedSearchQuery) return allInvoices;
@@ -441,12 +429,13 @@ function MarketplaceContent() {
     );
   }, [allInvoices, debouncedSearchQuery]);
 
-  // Reset scroll on rapid filter or search query change (#560)
-  useEffect(() => {
-    if (isUrlHydrated && virtualListRef.current) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }, [debouncedFilters, debouncedSearchQuery, sortBy, isUrlHydrated]);
+  // Result-set fingerprint (Issue #1015). Sort order is intentionally excluded
+  // so flipping "APR high→low / low→high" reorders in place instead of
+  // bouncing the user back to the top of the grid.
+  const filterFingerprint = useMemo(
+    () => buildMarketplaceFilterFingerprint(filters, debouncedSearchQuery),
+    [filters, debouncedSearchQuery]
+  );
 
   const { activeIndex, setActiveIndex } = useRovingTabIndex(filteredInvoices.length);
 
@@ -537,6 +526,62 @@ function MarketplaceContent() {
 
   const virtualListRef = useRef<HTMLDivElement>(null);
 
+  // TanStack's window virtualizer needs the list's document offset as
+  // `scrollMargin`; otherwise row transforms are calculated against the
+  // viewport top. Reading `virtualListRef.current?.offsetTop` during the first
+  // render went stale whenever a filter bar expanded, the comparison bar
+  // mounted, or the viewport/orientation changed (Issue #1014).
+  //
+  // Keep it in state, re-measured from the element's bounding box (robust for
+  // nested scroll parents), and only commit when it actually moves so the
+  // ResizeObserver cannot start a render loop.
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  const measureScrollMargin = useCallback(() => {
+    const list = virtualListRef.current;
+    if (!list || typeof window === "undefined") return;
+    const next = Math.round(list.getBoundingClientRect().top + window.scrollY);
+    setScrollMargin((current) => (Math.abs(current - next) > 1 ? next : current));
+  }, []);
+
+  const debouncedMeasureScrollMargin = useDebouncedCallback(
+    measureScrollMargin,
+    100
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    // Measure immediately so the first paint after mount uses the real offset.
+    measureScrollMargin();
+
+    const observer = new ResizeObserver(() => debouncedMeasureScrollMargin());
+    // Body catches content above the list growing (filter sidebar, comparison
+    // bar); the list itself catches row-height changes.
+    observer.observe(document.body);
+    if (virtualListRef.current) observer.observe(virtualListRef.current);
+
+    const handleViewportResize = () => debouncedMeasureScrollMargin();
+    window.addEventListener("resize", handleViewportResize);
+    window.addEventListener("orientationchange", handleViewportResize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", handleViewportResize);
+      window.removeEventListener("orientationchange", handleViewportResize);
+      debouncedMeasureScrollMargin.cancel();
+    };
+  }, [
+    debouncedMeasureScrollMargin,
+    measureScrollMargin,
+    comparisonEnabled,
+    columns,
+    isLoading,
+    filteredInvoices.length,
+  ]);
+
   // Estimate row height based on columns:
   // - 1 col (mobile)  → cards are wider, less vertical wrapping → ~500px
   // - 2 cols (tablet) → moderate height → ~460px
@@ -549,9 +594,30 @@ function MarketplaceContent() {
     count: virtualRows.length,
     estimateSize: () => estimatedRowHeight,
     overscan: columns === 1 ? 3 : 2,
-    scrollMargin: virtualListRef.current?.offsetTop ?? 0,
+    scrollMargin,
   });
-  // Active filters count for clearing badge — kept here for JSX use below
+
+  // The virtualizer snapshots options at construction; re-measure rows once the
+  // margin settles so the first post-resize paint is not offset by the old one.
+  useEffect(() => {
+    rowVirtualizer.measure();
+  }, [rowVirtualizer, scrollMargin]);
+
+  // Issue #1015 — return to the top when the result set materially changes.
+  // Sort-only changes are excluded from the fingerprint, so they reorder in
+  // place; reduced-motion users get an instant jump instead of a smooth ride.
+  const resetScrollToTop = useCallback(
+    (behavior: "auto" | "smooth") => {
+      rowVirtualizer.scrollToOffset(0, { behavior });
+    },
+    [rowVirtualizer]
+  );
+
+  useMarketplaceScrollReset({
+    fingerprint: filterFingerprint,
+    enabled: isUrlHydrated,
+    reset: resetScrollToTop,
+  });
 
   const renderFiltersList = () => (
     <div className="flex flex-col gap-6">
@@ -841,6 +907,9 @@ function MarketplaceContent() {
             onRename={renamePreset}
             onDelete={deletePreset}
           />
+          <div className="mt-3">
+            <PresetImportExport />
+          </div>
         </div>
 
         {/* 2-Column Responsive Layout */}
@@ -930,6 +999,7 @@ function MarketplaceContent() {
                   style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
                   data-testid="virtual-invoice-list"
                   data-virtualized="true"
+                  data-scroll-margin={scrollMargin}
                   aria-label={`Invoice grid, ${filteredInvoices.length} invoices`}
                 >
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {

@@ -526,6 +526,102 @@ export function parseAnyInvoiceMetadata(raw: unknown): ParsedInvoiceMetadata {
   );
 }
 
+// ─── Create-flow mapper ───────────────────────────────────────────────────────
+
+/**
+ * Map a `CreateInvoiceFormData` object (from the create wizard) plus the
+ * already-pinned `docCid` into an `InvoiceMetadataV1Input` that can be
+ * passed directly to `uploadValidatedInvoiceMetadata`.
+ *
+ * This is the single, shared mapper for both the live service and any future
+ * server-side flows.  Keeping it here (next to the schema) means the mapping
+ * is always co-located with the Zod definitions it must satisfy.
+ *
+ * @param formData    - The raw form data from the create wizard.
+ * @param ownerAddress - Stellar G-address of the invoice issuer / SME.
+ * @param docCid      - IPFS CID of the already-pinned PDF document.
+ */
+export function formDataToMetadataV1Input(
+  formData: import("@/types").CreateInvoiceFormData,
+  ownerAddress: string,
+  docCid: string
+): InvoiceMetadataV1Input {
+  // Compute effective APR for the attributes array
+  const daysToMaturity = Math.ceil(
+    (new Date(formData.dueDate).getTime() -
+      new Date(formData.listingExpiryDate).getTime()) /
+      (1000 * 60 * 60 * 24)
+  );
+  const effectiveAPR =
+    daysToMaturity > 0 && formData.discountRate > 0 && formData.discountRate < 1
+      ? (formData.discountRate / (1 - formData.discountRate)) *
+        (365 / daysToMaturity) *
+        100
+      : 0;
+
+  return {
+    // ── NFT standard fields ─────────────────────────────────────────────
+    name: `Invoice ${formData.invoiceNumber}`,
+    description:
+      formData.description?.trim() ||
+      `Tokenized invoice ${formData.invoiceNumber} — ${formData.debtorName}`,
+    // Placeholder — uploadValidatedInvoiceMetadata will replace this with
+    // the real SVG/thumbnail CID after generating the preview image.
+    image: `ipfs://${docCid}`,
+
+    // ── Invoice identity ────────────────────────────────────────────────
+    invoice_number: formData.invoiceNumber,
+    amount: formData.amount,
+    currency: formData.currency,
+    // Normalise to YYYY-MM-DD so it always matches the schema regex
+    due_date: formData.dueDate.slice(0, 10),
+
+    // ── Parties ─────────────────────────────────────────────────────────
+    issuer: {
+      address: ownerAddress,
+    },
+    debtor: {
+      name: formData.debtorName,
+      address: formData.debtorAddress || undefined,
+      privacy: formData.debtorPrivacy ?? "full",
+    },
+
+    // ── Enrichment ───────────────────────────────────────────────────────
+    jurisdiction: formData.jurisdiction as InvoiceMetadataV1Input["jurisdiction"],
+    category: formData.category as InvoiceMetadataV1Input["category"],
+    discount_rate: formData.discountRate,
+    ipfs_document_cid: docCid,
+
+    // ── Pre-built attributes (APR as an extra trait) ──────────────────
+    attributes: [
+      { trait_type: "Invoice Number", value: formData.invoiceNumber },
+      { trait_type: "Currency", value: formData.currency },
+      { trait_type: "Amount", value: formData.amount, display_type: "number" },
+      { trait_type: "Due Date", value: formData.dueDate.slice(0, 10) },
+      ...(formData.jurisdiction
+        ? [{ trait_type: "Jurisdiction", value: formData.jurisdiction }]
+        : []),
+      ...(formData.category
+        ? [{ trait_type: "Category", value: formData.category }]
+        : []),
+      {
+        trait_type: "Discount Rate",
+        value: Math.round(formData.discountRate * 100),
+        display_type: "boost_percentage" as const,
+      },
+      ...(effectiveAPR > 0
+        ? [
+            {
+              trait_type: "Effective APR",
+              value: Math.round(effectiveAPR * 100) / 100,
+              display_type: "number" as const,
+            },
+          ]
+        : []),
+    ],
+  };
+}
+
 /** UI descriptor for a metadata version badge. */
 export interface MetadataVersionBadge {
   label: string;

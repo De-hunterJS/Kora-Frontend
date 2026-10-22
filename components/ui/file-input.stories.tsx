@@ -42,7 +42,7 @@ export const Default: Story = {
               setFile(null);
             }
           }}
-          hint="Only PDF up to 5MB"
+          hint="Only PDF up to 10MB"
         />
         {file && (
           <p className="mt-2 text-sm text-zinc-400">
@@ -91,6 +91,7 @@ export const Error: Story = {
       <div className="w-[480px]">
         <FileInput
           label="Invoice Document"
+          maxSizeMB={5}
           value={file}
           onChange={(e) => {
             const files = e.target.files;

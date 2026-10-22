@@ -19,6 +19,8 @@ import {
 import { generateInvoiceSvg, svgToFile, rasterizeSvgToThumbnail } from "@/lib/invoiceSvg";
 import { createMockUploadToken } from "@/lib/security";
 import { parseUploadRejection } from "@/lib/uploadScanResult";
+import { MAX_INVOICE_PDF_BYTES } from "@/lib/validations/upload";
+import { getCsrfToken } from "@/lib/csrfClient";
 
 const IPFS_GATEWAY = env.NEXT_PUBLIC_IPFS_GATEWAY;
 
@@ -119,11 +121,11 @@ export function validateCid(cid: string): void {
   }
 }
 
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+export const MAX_FILE_SIZE = MAX_INVOICE_PDF_BYTES;
 
 export class FileSizeError extends Error {
   constructor(size: number) {
-    super(`File size ${size} bytes exceeds the 10MB limit.`);
+    super(`File size ${size} bytes exceeds the ${MAX_FILE_SIZE / (1024 * 1024)}MB limit.`);
     this.name = "FileSizeError";
   }
 }
@@ -149,19 +151,65 @@ export class UploadError extends Error {
   }
 }
 
+/**
+ * Thrown when an in-flight upload is cancelled via an `AbortSignal`
+ * (wizard unmount, file replace, or explicit cancel). Callers must treat
+ * this as "cancelled", not "failed": an aborted upload must never write
+ * CID / progress state into the active draft.
+ */
+export class UploadAbortedError extends Error {
+  constructor() {
+    super("Upload aborted");
+    this.name = "UploadAbortedError";
+  }
+}
+
+/** True for abort-driven failures (vs genuine network/server failures). */
+export function isUploadAborted(err: unknown): boolean {
+  return (
+    err instanceof UploadAbortedError ||
+    (err instanceof Error && err.name === "AbortError")
+  );
+}
+
+/**
+ * Create a controller for one upload attempt. Hand its `signal` to the
+ * upload helpers and call `abort()` on wizard unmount, file replace, or
+ * explicit cancel. One controller per attempt — do not reuse after abort.
+ */
+export function createUploadAbortController(): AbortController {
+  return new AbortController();
+}
+
 /** Upload a file via XHR so we get real progress events. */
 function xhrUpload(
   url: string,
   form: FormData,
   onProgress?: (percent: number) => void,
-  authToken?: string
+  authToken?: string,
+  signal?: AbortSignal
 ): Promise<{ IpfsHash: string }> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new UploadAbortedError());
+      return;
+    }
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
 
     const token = authToken || createMockUploadToken();
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    const cleanup = () => signal?.removeEventListener("abort", onAbort);
+    const onAbort = () => {
+      cleanup();
+      try {
+        xhr.abort();
+      } finally {
+        reject(new UploadAbortedError());
+      }
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
 
     if (onProgress) {
       xhr.upload.onprogress = (e) => {
@@ -172,6 +220,11 @@ function xhrUpload(
     }
 
     xhr.onload = () => {
+      cleanup();
+      if (signal?.aborted) {
+        reject(new UploadAbortedError());
+        return;
+      }
       if (xhr.status >= 200 && xhr.status < 300) {
         const parsed = JSON.parse(xhr.responseText);
         const cid = parsed.cid || parsed.IpfsHash;
@@ -195,21 +248,52 @@ function xhrUpload(
       }
     };
 
-    xhr.onerror = () => reject(new UploadError("Network error during IPFS upload"));
-    xhr.send(form);
+    xhr.onerror = () => {
+      cleanup();
+      reject(
+        signal?.aborted
+          ? new UploadAbortedError()
+          : new UploadError("Network error during IPFS upload")
+      );
+    };
+    xhr.onabort = () => {
+      cleanup();
+      reject(new UploadAbortedError());
+    };
+    void getCsrfToken().then((csrfToken) => {
+      if (signal?.aborted) {
+        cleanup();
+        reject(new UploadAbortedError());
+        return;
+      }
+      if (csrfToken) xhr.setRequestHeader("x-kora-csrf", csrfToken);
+      xhr.send(form);
+    }).catch((err) => {
+      cleanup();
+      reject(err);
+    });
   });
 }
 
 /**
  * Upload an invoice PDF to IPFS via Pinata with progress tracking.
  * Returns the validated CID.
+ *
+ * Pass an `AbortSignal` (from `createUploadAbortController()`) to cancel:
+ * the XHR is aborted and the promise rejects with `UploadAbortedError`
+ * instead of resolving — aborted uploads must not write CID state.
+ * `withRetry` only retries 5xx failures, so aborts are never retried.
  */
 export async function uploadInvoicePDF(
   file: File,
   walletAddress: string,
   onProgress?: (percent: number) => void,
-  authToken?: string
+  authToken?: string,
+  signal?: AbortSignal
 ): Promise<string> {
+  if (signal?.aborted) {
+    throw new UploadAbortedError();
+  }
   if (file.size > MAX_FILE_SIZE) {
     throw new FileSizeError(file.size);
   }
@@ -218,7 +302,7 @@ export async function uploadInvoicePDF(
   form.append("file", file);
   form.append("walletAddress", walletAddress || "GABC1234567890TESTADDRESS");
 
-  const data = await withRetry(() => xhrUpload(`/api/upload`, form, onProgress, authToken), 3);
+  const data = await withRetry(() => xhrUpload(`/api/upload`, form, onProgress, authToken, signal), 3);
 
   const cid = data.IpfsHash;
   validateCid(cid);
@@ -232,26 +316,34 @@ export async function uploadInvoicePDF(
 export async function uploadInvoiceMetadata(
   metadata: InvoiceMetadata,
   walletAddress: string,
-  authToken?: string
+  authToken?: string,
+  signal?: AbortSignal
 ): Promise<string> {
+  if (signal?.aborted) {
+    throw new UploadAbortedError();
+  }
   const token = authToken || createMockUploadToken(walletAddress);
   const res = await withRetry(
-    () =>
-      fetch(`/api/upload`, {
+    async () => {
+      const csrfToken = await getCsrfToken();
+      return fetch(`/api/upload`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(csrfToken ? { "x-kora-csrf": csrfToken } : {}),
         },
         body: JSON.stringify({
           walletAddress: walletAddress || "GABC1234567890TESTADDRESS",
           metadata,
           name: `invoice-metadata-${metadata.invoiceNumber}`,
         }),
+        signal,
       }).then(async (r) => {
         if (!r.ok) throw new Error(`Metadata upload failed: ${r.status}`);
         return r.json() as Promise<{ cid: string }>;
-      }),
+      });
+    },
     3
   );
 
@@ -267,14 +359,15 @@ export async function uploadInvoiceToIPFS(
   metadata: InvoiceMetadata,
   walletAddress: string,
   onProgress?: (percent: number) => void,
-  authToken?: string
+  authToken?: string,
+  signal?: AbortSignal
 ): Promise<{ pdfCid: string; metadataCid: string }> {
-  const pdfCid = await uploadInvoicePDF(file, walletAddress, onProgress, authToken);
+  const pdfCid = await uploadInvoicePDF(file, walletAddress, onProgress, authToken, signal);
   const metadataCid = await uploadInvoiceMetadata({
     ...metadata,
     documentHash: pdfCid,
     documentUrl: ipfsUrl(pdfCid),
-  }, walletAddress, authToken);
+  }, walletAddress, authToken, signal);
   return { pdfCid, metadataCid };
 }
 
@@ -668,12 +761,14 @@ export async function uploadValidatedInvoiceMetadata(
   // Step 5: Upload metadata JSON to IPFS
   const token = createMockUploadToken(walletAddress);
   const metadataCid = await withRetry(
-    () =>
-      fetch(`/api/upload`, {
+    async () => {
+      const csrfToken = await getCsrfToken();
+      return fetch(`/api/upload`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(csrfToken ? { "x-kora-csrf": csrfToken } : {}),
         },
         body: JSON.stringify({
           walletAddress: walletAddress || "GABC1234567890TESTADDRESS",
@@ -684,7 +779,8 @@ export async function uploadValidatedInvoiceMetadata(
         if (!r.ok) throw new Error(`Metadata upload failed: ${r.status}`);
         const json = (await r.json()) as { cid: string };
         return json.cid;
-      }),
+      });
+    },
     3
   );
 
@@ -704,11 +800,13 @@ export async function unpinFromPinata(cid: string): Promise<boolean> {
   try {
     validateCid(cid);
     const token = createMockUploadToken();
+    const csrfToken = await getCsrfToken();
     const response = await fetch(`/api/upload`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        ...(csrfToken ? { "x-kora-csrf": csrfToken } : {}),
       },
       body: JSON.stringify({ cid }),
     });
@@ -740,10 +838,11 @@ export async function uploadFileToPinata(
   _name: string,
   walletAddress?: string,
   onProgress?: (percent: number) => void,
-  authToken?: string
+  authToken?: string,
+  signal?: AbortSignal
 ): Promise<string> {
   // If walletAddress is provided, forward it; otherwise use empty string.
-  return uploadInvoicePDF(file, walletAddress || "", onProgress, authToken);
+  return uploadInvoicePDF(file, walletAddress || "", onProgress, authToken, signal);
 }
 
 export async function uploadJsonToPinata(
@@ -755,18 +854,21 @@ export async function uploadJsonToPinata(
   const addr = walletAddress || "GABC1234567890TESTADDRESS";
   const token = authToken || createMockUploadToken(addr);
   const res = await withRetry(
-    () =>
-      fetch(`/api/upload`, {
+    async () => {
+      const csrfToken = await getCsrfToken();
+      return fetch(`/api/upload`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          ...(csrfToken ? { "x-kora-csrf": csrfToken } : {}),
         },
         body: JSON.stringify({ walletAddress: addr, metadata, name: _name }),
       }).then(async (r) => {
         if (!r.ok) throw new Error(`Metadata upload failed: ${r.status}`);
         return r.json() as Promise<{ cid: string }>;
-      }),
+      });
+    },
     3
   );
   validateCid(res.cid);

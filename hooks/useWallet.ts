@@ -28,6 +28,7 @@ import {
   pollUsdcBalanceAfterMint,
 } from "@/hooks/useUsdcBalance";
 import { queryKeys } from "@/lib/queryKeys";
+import { getCsrfToken } from "@/lib/csrfClient";
 import { useInvoiceStore } from "@/store/invoiceStore";
 import { env } from "@/lib/env";
 import type { WalletProvider } from "@/types";
@@ -48,7 +49,7 @@ const WALLET_NETWORK =
     ? WalletNetwork.PUBLIC
     : WalletNetwork.TESTNET;
 
-function getKit(): StellarWalletsKit {
+export function getKit(): StellarWalletsKit {
   if (!kit) {
     kit = new StellarWalletsKit({
       network: WALLET_NETWORK,
@@ -691,6 +692,30 @@ export function useWallet() {
     await refreshBalance();
   }, [address, refreshBalance, signTransaction]);
 
+  const addUsdcTrustlineOnTestnet = useCallback(async () => {
+    if (!address) throw new Error("Wallet not connected");
+
+    const raw = await getAccountBalances(address);
+    if (hasTrustline(raw.otherAssets, "USDC", WALLET_ASSETS.usdc.issuer)) {
+      await refreshBalance();
+      return;
+    }
+
+    const trustlineXdr = await buildAddTrustlineTx(address, "usdc");
+    const signedTrustlineXdr = await signTransaction(trustlineXdr);
+    const submit = await submitTransaction(signedTrustlineXdr);
+    if (submit.status === "ERROR") {
+      throw new Error("USDC trustline transaction submission failed");
+    }
+    if (submit.hash) {
+      await waitForTransaction(submit.hash);
+    }
+    await refreshBalance();
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.account.usdcBalance(address),
+    });
+  }, [address, queryClient, refreshBalance, signTransaction]);
+
   const exportWalletDiagnostics = useCallback((): WalletDiagnosticsExport => {
     return sanitizeWalletDiagnosticsExport({
       exportedAt: new Date().toISOString(),
@@ -721,9 +746,7 @@ export function useWallet() {
 
   const requestChallenge = useCallback(async (): Promise<string> => {
     try {
-      const csrfRes = await fetch("/api/auth/csrf");
-      const csrfData = await csrfRes.json();
-      const csrfToken = csrfData?.token ?? "";
+      const csrfToken = await getCsrfToken();
 
       const res = await fetch("/api/auth/challenge", {
         method: "POST",
@@ -752,9 +775,7 @@ export function useWallet() {
     }
 
     try {
-      const csrfRes = await fetch("/api/auth/csrf");
-      const csrfData = await csrfRes.json();
-      const csrfToken = csrfData?.token ?? "";
+      const csrfToken = await getCsrfToken();
 
       const challenge = await requestChallenge();
       const walletKit = getKit();
@@ -883,6 +904,7 @@ export function useWallet() {
     manualReconnect,
     fundWalletOnTestnet,
     addEurcTrustlineOnTestnet,
+    addUsdcTrustlineOnTestnet,
     mintTestnetUsdc,
     signTransaction,
     refreshBalance,

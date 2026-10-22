@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Store, TrendingUp, DollarSign, BarChart3, Clock, AlertTriangle, Tag } from "lucide-react";
+import { Store, TrendingUp, DollarSign, BarChart3, Clock, AlertTriangle, Tag, Download, FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +41,13 @@ import { StaleDataBadge } from "@/components/layout/StaleDataBadge";
 import { SellerAnalyticsDashboard } from "@/components/analytics/SellerAnalyticsDashboard";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import EmptyState from "@/components/ui/EmptyState";
+import { exportCsv, exportPdf } from "@/lib/export";
+import {
+  PORTFOLIO_EXPORT_HEADERS,
+  positionsToExportRows,
+  portfolioExportFilename,
+  portfolioPdfFilename,
+} from "@/lib/portfolioExport";
 
 const DataTable = dynamic<DataTableProps<InvestorPosition>>(
   () => import("@/components/ui/data-table").then((m) => m.DataTable),
@@ -222,6 +229,21 @@ export default function InvestorDashboardPage() {
     setListingTarget(null);
   };
 
+  /** Export visible positions as a CSV file. Scoped to the connected address. */
+  const handleExportCsv = useCallback(() => {
+    if (!positionsData.length) return;
+    const rows = positionsToExportRows(positionsData);
+    exportCsv(rows as Record<string, unknown>[], portfolioExportFilename(), [
+      ...PORTFOLIO_EXPORT_HEADERS,
+    ]);
+  }, [positionsData]);
+
+  /** Capture the positions card DOM node as a PDF. Falls back to window.print(). */
+  const handleExportPdf = useCallback(() => {
+    if (!positionsData.length) return;
+    void exportPdf("investor-positions-card", portfolioPdfFilename());
+  }, [positionsData]);
+
   const columns: ColumnDef<InvestorPosition>[] = [
     {
       id: "invoice",
@@ -351,10 +373,37 @@ export default function InvestorDashboardPage() {
           <h1 className="text-2xl font-semibold text-white">{t("title")}</h1>
           <p className="text-sm text-zinc-400">{t("subtitle")}</p>
         </div>
-        <StaleDataBadge
-          updatedAt={positionsQuery.dataUpdatedAt}
-          isFetching={positionsQuery.isFetching}
-        />
+        <div className="flex items-center gap-2">
+          <StaleDataBadge
+            updatedAt={positionsQuery.dataUpdatedAt}
+            isFetching={positionsQuery.isFetching}
+          />
+          {/* Export actions — disabled when loading or no positions */}
+          <button
+            type="button"
+            disabled={!positionsData.length || positionsQuery.isLoading}
+            aria-disabled={!positionsData.length || positionsQuery.isLoading}
+            aria-label={t("export.csvAriaLabel")}
+            title={!positionsData.length ? t("export.emptyTooltip") : undefined}
+            data-testid="export-csv-btn"
+            onClick={handleExportCsv}
+            className="rounded-md bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-zinc-800 print:hidden"
+          >
+            {t("export.csv")}
+          </button>
+          <button
+            type="button"
+            disabled={!positionsData.length || positionsQuery.isLoading}
+            aria-disabled={!positionsData.length || positionsQuery.isLoading}
+            aria-label={t("export.pdfAriaLabel")}
+            title={!positionsData.length ? t("export.emptyTooltip") : undefined}
+            data-testid="export-pdf-btn"
+            onClick={handleExportPdf}
+            className="rounded-md bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-zinc-800 print:hidden"
+          >
+            {t("export.pdf")}
+          </button>
+        </div>
       </div>
 
       {/* Stats row — always visible so the user sees zeros, not nothing */}
@@ -420,7 +469,7 @@ export default function InvestorDashboardPage() {
 
           {/* Positions data table */}
           <ErrorBoundary>
-            <Card>
+            <Card id="investor-positions-card">
               <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <CardTitle>{t("positions.title")}</CardTitle>
                 <Badge variant="secondary">

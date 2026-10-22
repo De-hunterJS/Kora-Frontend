@@ -3,6 +3,7 @@ import { Buffer } from "node:buffer";
 import { verifyUploadToken } from "@/lib/security";
 import { logger } from "@/lib/logger";
 import { verifyCsrf } from "@/lib/csrf";
+import { MAX_INVOICE_PDF_BYTES } from "@/lib/validations/upload";
 
 const PINATA_BASE = "https://api.pinata.cloud";
 const PINATA_JWT = process.env.PINATA_JWT ?? "";
@@ -200,8 +201,7 @@ export async function POST(req: NextRequest) {
       const buffer = Buffer.from(arrayBuffer);
 
       // Size check
-      const MAX_BYTES = 10 * 1024 * 1024; // 10MB
-      if (buffer.length > MAX_BYTES) return NextResponse.json({ error: "File too large", requestId }, { status: 400 });
+      if (buffer.length > MAX_INVOICE_PDF_BYTES) return NextResponse.json({ error: "File too large", requestId }, { status: 400 });
 
       // Magic byte validation for PDF: %PDF-
       const magic = buffer.slice(0, 5).toString("utf8");

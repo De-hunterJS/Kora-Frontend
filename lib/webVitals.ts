@@ -13,6 +13,7 @@
  */
 
 import type { NextWebVitalsMetric } from "next/app";
+import { getCsrfToken } from "@/lib/csrfClient";
 
 // ─── Thresholds ───────────────────────────────────────────────────────────────
 
@@ -233,12 +234,12 @@ let _flushTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleFlush(): void {
   if (_flushTimer !== null) return;
   _flushTimer = setTimeout(() => {
-    flushVitals();
+    void flushVitals();
     _flushTimer = null;
   }, 2000); // batch within 2 s
 }
 
-export function flushVitals(): void {
+export async function flushVitals(): Promise<void> {
   if (_queue.length === 0) return;
   const payload = _queue.splice(0);
 
@@ -256,19 +257,18 @@ export function flushVitals(): void {
     })),
   });
 
-  // Use sendBeacon when available (non-blocking, survives page unload)
-  if (typeof navigator !== "undefined" && navigator.sendBeacon) {
-    navigator.sendBeacon("/api/vitals", new Blob([body], { type: "application/json" }));
-  } else {
-    fetch("/api/vitals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-      keepalive: true,
-    }).catch(() => {
-      // Silently ignore — vitals reporting must never break the app
-    });
-  }
+  const csrfToken = await getCsrfToken();
+  fetch("/api/vitals", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(csrfToken ? { "x-kora-csrf": csrfToken } : {}),
+    },
+    body,
+    keepalive: true,
+  }).catch(() => {
+    // Silently ignore — vitals reporting must never break the app
+  });
 }
 
 export function sendVitalToEndpoint(metric: NextWebVitalsMetric): void {

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,6 +44,7 @@ import { cn, isValidStellarAddress } from "@/lib/utils";
 import { safeStellarTxUrl } from "@/lib/security";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { usePinataHealth } from "@/hooks/usePinataHealth";
+import { MAX_INVOICE_PDF_BYTES } from "@/lib/validations/upload";
 import ShareInvoiceButton from "@/components/invoice/ShareInvoiceButton";
 import { useFeatureFlag } from "@/lib/featureFlags";
 import { useWalletKycStatus } from "@/store/walletStore";
@@ -50,10 +52,15 @@ import { KybGateScreen } from "@/components/invoice/KybGateScreen";
 
 const TODAY = new Date().toISOString().split("T")[0];
 
+/** sessionStorage key for wizard step persistence (Issue #XXX). */
+const WIZARD_STEP_KEY = "kora-invoice-create-step";
+
 export default function CreateInvoicePage() {
   const t = useTranslations("createInvoice");
   const tMarketplace = useTranslations("marketplace");
   const tCommon = useTranslations("common");
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const STEPS = [t("steps.details"), t("steps.terms"), t("steps.review")];
 
@@ -88,6 +95,10 @@ export default function CreateInvoicePage() {
   ];
 
   const [step, setStep] = useState(0);
+  // ── Step persistence (Issue #XXX): restore from ?step= query param or
+  // sessionStorage on mount. Actual validation happens after isDraftResolved.
+  const [stepRestoredFromStorage, setStepRestoredFromStorage] = useState(false);
+
   const [file, setFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
   // ── KYB gate state (Issue #489) ───────────────────────────────────────────
@@ -197,6 +208,76 @@ export default function CreateInvoicePage() {
     return () => subscription.unsubscribe();
   }, [watch, setCreateDraft, isDraftResolved]);
 
+  // ── Step persistence: restore persisted step once draft is resolved ───────
+  // Priority: ?step= query param > sessionStorage > default (0).
+  // We validate the restored step against form completeness so the user can't
+  // skip ahead to a step their partial form doesn't satisfy.
+  useEffect(() => {
+    if (!isDraftResolved || stepRestoredFromStorage) return;
+
+    const formSnapshot = watch();
+    const { invoiceDetailsStepSchema: dts, financingTermsSchema: fts } = {
+      invoiceDetailsStepSchema,
+      financingTermsSchema,
+    };
+
+    const step0OK = dts.safeParse(formSnapshot).success;
+    const step1OK = fts.safeParse(formSnapshot).success;
+
+    // Max step the form data can actually support
+    const maxAllowedStep = step1OK ? 2 : step0OK ? 1 : 0;
+
+    // 1. ?step= query param takes precedence (support-link sharing)
+    const qpStep = searchParams.get("step");
+    if (qpStep !== null) {
+      const parsed = parseInt(qpStep, 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 2) {
+        setStep(Math.min(parsed, maxAllowedStep));
+        setStepRestoredFromStorage(true);
+        return;
+      }
+    }
+
+    // 2. sessionStorage fallback
+    try {
+      const stored = sessionStorage.getItem(WIZARD_STEP_KEY);
+      if (stored !== null) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 2) {
+          setStep(Math.min(parsed, maxAllowedStep));
+        }
+      }
+    } catch {
+      // sessionStorage unavailable (private mode, etc.) — silently ignore
+    }
+
+    setStepRestoredFromStorage(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDraftResolved]);
+
+  // ── Step persistence: write step to sessionStorage on change ─────────────
+  useEffect(() => {
+    if (!stepRestoredFromStorage) return;
+    try {
+      sessionStorage.setItem(WIZARD_STEP_KEY, String(step));
+    } catch {
+      // ignore
+    }
+    // Sync ?step= query param for shareable support links
+    const params = new URLSearchParams(searchParams.toString());
+    if (step === 0) {
+      params.delete("step");
+    } else {
+      params.set("step", String(step));
+    }
+    const newSearch = params.toString();
+    const currentSearch = searchParams.toString();
+    if (newSearch !== currentSearch) {
+      router.replace(`?${newSearch}`, { scroll: false });
+    }
+  }, [step, stepRestoredFromStorage, searchParams, router]);
+  // ─────────────────────────────────────────────────────────────────────────
+
   const formValues = watch();
   const step0Valid = useMemo(
     () => invoiceDetailsStepSchema.safeParse(formValues).success,
@@ -272,7 +353,7 @@ export default function CreateInvoicePage() {
     onDrop,
     accept: { "application/pdf": [".pdf"] },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: MAX_INVOICE_PDF_BYTES,
   });
 
   const nextStep = async () => {
@@ -346,6 +427,7 @@ export default function CreateInvoicePage() {
 
   const handleDiscardDraft = () => {
     clearCreateDraft();
+    try { sessionStorage.removeItem(WIZARD_STEP_KEY); } catch { /* ignore */ }
     setShowDraftBanner(false);
     setIsDraftResolved(true);
   };
@@ -405,6 +487,8 @@ export default function CreateInvoicePage() {
           queryClient.invalidateQueries({ queryKey: ["invoices", "infinite"] });
           queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
           clearCreateDraft();
+          // Clear persisted step on successful mint
+          try { sessionStorage.removeItem(WIZARD_STEP_KEY); } catch { /* ignore */ }
           setSubmitted(true);
         },
       }

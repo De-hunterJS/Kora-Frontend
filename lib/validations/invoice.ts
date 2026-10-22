@@ -4,6 +4,7 @@ import {
   type ValidationMessages,
 } from "./locales";
 import type { Locale } from "@/i18n/config";
+import { MAX_INVOICE_PDF_BYTES } from "./upload";
 
 // ─── Schema factories ─────────────────────────────────────────────────────────
 //
@@ -109,7 +110,7 @@ export function buildUploadSchema(msgs: ValidationMessages) {
       .refine(
         (file) => {
           if (!file) return false;
-          if (typeof file.size === "number") return file.size <= 10 * 1024 * 1024;
+          if (typeof file.size === "number") return file.size <= MAX_INVOICE_PDF_BYTES;
           return true;
         },
         msgs.fileSize

@@ -72,6 +72,8 @@ export interface SecondaryMarketItem {
 
 function SecondaryMarketplaceContent() {
   const t = useTranslations("secondaryMarket");
+    const t = useTranslations("secondaryMarket");
+    const tFilters = useTranslations("secondary.filters");
   const { formatCurrency, formatPercentage } = useFormatters();
   const secondaryEnabled = useFeatureFlag("secondary-market");
 
@@ -91,6 +93,14 @@ function SecondaryMarketplaceContent() {
   // Issue #597: one schedule, read from validated env, shared by every figure
   // on this page.
   const feeSchedule = useMemo(() => getFeeSchedule(env), []);
+  const tenorOptions = TENOR_OPTIONS.map(({ labelKey, ...option }) => ({
+    ...option,
+    label: tFilters(`tenor.${labelKey}`),
+  }));
+  const yieldOptions = YIELD_OPTIONS.map(({ labelKey, ...option }) => ({
+    ...option,
+    label: tFilters(`yield.${labelKey}`),
+  }));
 
   const { listings: storeListings } = usePositionListingStore();
   const { invoices } = useInvoiceStore();
@@ -306,12 +316,12 @@ function SecondaryMarketplaceContent() {
           >
             {copied ? (
               <>
-                <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-400" />
+                <Check className="me-1.5 h-3.5 w-3.5 text-emerald-400" />
                 {t("copied")}
               </>
             ) : (
               <>
-                <Copy className="mr-1.5 h-3.5 w-3.5" />
+                <Copy className="me-1.5 h-3.5 w-3.5" />
                 {t("shareView")}
               </>
             )}
@@ -335,12 +345,12 @@ function SecondaryMarketplaceContent() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             {/* Search Input */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+              <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
               <Input
                 placeholder={t("searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(sanitizeQueryParam(e.target.value))}
-                className="pl-9 bg-zinc-950/80 border-zinc-800 text-sm focus:border-primary"
+                className="ps-9 bg-zinc-950/80 border-zinc-800 text-sm focus:border-primary"
                 aria-label={t("searchAria")}
               />
             </div>
@@ -353,7 +363,7 @@ function SecondaryMarketplaceContent() {
                 <Select
                   value={tenorFilter}
                   onChange={(val) => setTenorFilter(sanitizeQueryParam(val))}
-                  options={TENOR_OPTIONS}
+                  options={tenorOptions}
                   loading={myPositionsQuery.isLoading}
                   className="w-40 bg-zinc-950/80 border-zinc-800 text-xs"
                   aria-label={t("tenorAria")}
@@ -366,7 +376,7 @@ function SecondaryMarketplaceContent() {
                 <Select
                   value={yieldFilter}
                   onChange={(val) => setYieldFilter(sanitizeQueryParam(val))}
-                  options={YIELD_OPTIONS}
+                  options={yieldOptions}
                   loading={myPositionsQuery.isLoading}
                   className="w-36 bg-zinc-950/80 border-zinc-800 text-xs"
                   aria-label={t("yieldAria")}
@@ -375,12 +385,12 @@ function SecondaryMarketplaceContent() {
 
               {/* Seller Filter */}
               <div className="relative w-44">
-                <User className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                <User className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
                 <Input
                   placeholder={t("sellerPlaceholder")}
                   value={sellerFilter}
                   onChange={(e) => setSellerFilter(sanitizeQueryParam(e.target.value))}
-                  className="pl-8 bg-zinc-950/80 border-zinc-800 text-xs h-9"
+                  className="ps-8 bg-zinc-950/80 border-zinc-800 text-xs h-9"
                   aria-label={t("sellerAria")}
                 />
               </div>
@@ -405,7 +415,7 @@ function SecondaryMarketplaceContent() {
                   className="text-xs text-zinc-400 hover:text-white"
                   aria-label={t("resetAria")}
                 >
-                  <RotateCcw className="mr-1 h-3.5 w-3.5" />
+                  <RotateCcw className="me-1 h-3.5 w-3.5" />
                   {t("reset")}
                 </Button>
               )}
@@ -419,10 +429,10 @@ function SecondaryMarketplaceContent() {
                 onClick={() => setMobileFilterOpen(true)}
                 className="w-full border-zinc-800 bg-zinc-950/80 text-xs"
               >
-                <SlidersHorizontal className="mr-2 h-3.5 w-3.5 text-primary" />
+                <SlidersHorizontal className="me-2 h-3.5 w-3.5 text-primary" />
                 {t("filterPositions")}
                 {hasActiveFilters && (
-                  <Badge variant="outline" className="ml-2 bg-primary/20 text-primary text-[10px]">
+                  <Badge variant="outline" className="ms-2 bg-primary/20 text-primary text-[10px]">
                     {t("active")}
                   </Badge>
                 )}
@@ -570,7 +580,7 @@ function SecondaryMarketplaceContent() {
                         }}
                       >
                         {publicKey ? t("acquirePosition") : t("connectWalletToAcquire")}
-                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                        <ArrowRight className="ms-1.5 h-3.5 w-3.5 rtl:rotate-180" />
                       </Button>
 
                       {/* Issue #732: buyer accept-position transfer dialog shell */}
@@ -650,7 +660,7 @@ function SecondaryMarketplaceContent() {
                 <Select
                   value={tenorFilter}
                   onChange={(val) => setTenorFilter(sanitizeQueryParam(val))}
-                  options={TENOR_OPTIONS}
+                  options={tenorOptions}
                   loading={myPositionsQuery.isLoading}
                   className="w-full border-zinc-800 bg-zinc-900 text-xs"
                 />
@@ -661,7 +671,7 @@ function SecondaryMarketplaceContent() {
                 <Select
                   value={yieldFilter}
                   onChange={(val) => setYieldFilter(sanitizeQueryParam(val))}
-                  options={YIELD_OPTIONS}
+                  options={yieldOptions}
                   loading={myPositionsQuery.isLoading}
                   className="w-full border-zinc-800 bg-zinc-900 text-xs"
                 />

@@ -30,6 +30,7 @@ compared against the literal string `"true"` — anything else is off.
 | `kyb-mint-gate`             | `NEXT_PUBLIC_ENABLE_KYB_MINT_GATE`             | Gate invoice minting behind KYB/KYC business verification in the mint wizard.                                                                                                                              |
 | `secondary-market`          | `NEXT_PUBLIC_ENABLE_SECONDARY_MARKET`          | Secondary market P2P position-listing route (`/secondary`) — hides the navbar link and shows a maintenance empty state when off.                                                                           |
 | `category-taxonomy-preview` | `NEXT_PUBLIC_ENABLE_CATEGORY_TAXONOMY_PREVIEW` | Developer preview panel for the category taxonomy in the marketplace filters.                                                                                                                              |
+| `test-components`           | `NEXT_PUBLIC_ENABLE_TEST_COMPONENTS`           | Render isolated test harness page (`/test-components`) for component testing in Playwright and local QA. **Development-only** — off in production builds; set env var to enable on non-dev deployments.  |
 
 ### Defaults
 
@@ -37,11 +38,14 @@ Two layers of default apply:
 
 1. **Intrinsic (env unset).** Every flag defaults to `false` except
    `onboarding-tour`, whose guard is `val !== "false"` — it is **on unless the
-   env var is literally `"false"`** (`lib/featureFlags.ts:70`).
+   env var is literally `"false"`** (`lib/featureFlags.ts:70`). The `test-components`
+   flag is always `false` in production builds, regardless of env value, due to the
+   middleware guard that requires `NODE_ENV !== "production"` or the flag to be explicitly
+   enabled (`middleware.ts:40`).
 2. **`.env.example`.** The checked-in example sets recommended dev values:
    `mock-data`, `devtools`, `comparison`, `batch-actions`, and
-   `secondary-market` are `true`; `onboarding-tour` and `kyb-mint-gate` are
-   `false`; `category-taxonomy-preview` is not listed (off). Copying
+   `secondary-market` are `true`; `onboarding-tour`, `kyb-mint-gate`, and
+   `test-components` are not listed (off). Copying
    `.env.example` to `.env.local` reproduces the standard dev setup.
 
 ## Overriding locally
@@ -117,6 +121,7 @@ in the current build.
 | `kyb-mint-gate`             | `app/invoice/create/page.tsx`                                                                                                       |
 | `secondary-market`          | `components/layout/Navbar.tsx`, `app/secondary/page.tsx`, `app/secondary/metadata.ts` (server), `app/sitemap.xml/route.ts` (server) |
 | `category-taxonomy-preview` | `components/marketplace/CategoryTaxonomyPreview.tsx`                                                                                |
+| `test-components`           | `middleware.ts` (route guard), `app/test-components/page.tsx` (test harness)                                                        |
 
 ## Server-side flag reads (SEO)
 

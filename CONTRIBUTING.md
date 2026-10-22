@@ -181,7 +181,12 @@ The generated snapshots are stored in `__tests__/__snapshots__/` and must be com
 
 For local QA and isolated component testing (such as Playwright component tests for `FileInput`, `RangeSlider`, and `DatePicker`), an isolated test fixture page is available at `/test-components`.
 
-This route is development-only (`NODE_ENV !== "production"` or when `NEXT_PUBLIC_ENABLE_TEST_COMPONENTS="true"`). In production builds, requests to `/test-components` are automatically redirected to the home page (`/`).
+This route is development-only and is controlled by the `test-components` feature flag
+([`NEXT_PUBLIC_ENABLE_TEST_COMPONENTS`](docs/feature-flags.md#flag-reference)).
+In development (`NODE_ENV === "development"`), the page is always accessible.
+In production builds or on non-dev deployments, requests to `/test-components` are
+automatically redirected to the home page (`/`) unless the flag is explicitly enabled via env var.
+See [Feature Flags § test-components](docs/feature-flags.md#flag-reference) for more details.
 
 ## Internationalization (i18n)
 
@@ -298,12 +303,22 @@ merge the same way a failing type-check does.
 
 `ar` is a right-to-left locale (see `rtlLocales` in `i18n/config.ts`). When building or editing UI:
 
-- Prefer logical Tailwind classes (`ps-*`/`pe-*`, `ms-*`/`me-*`, `text-start`/`text-end`) over
-  physical ones (`pl-*`/`pr-*`, `text-left`/`text-right`) so layout flips correctly under `dir="rtl"`.
-- Check components that position things absolutely (dropdowns, tooltips, badges) with the language
-  switcher set to Arabic — absolute positioning is the most common place RTL breaks silently.
-- Directional icons (arrows, chevrons) generally should flip; check `rtl:` variant classes are applied
-  where the codebase already uses them (e.g. chevrons in dropdowns).
+- Prefer logical Tailwind classes (`ps-*`/`pe-*`, `ms-*`/`me-*`, `start-*`/`end-*`,
+  `text-start`/`text-end`) over physical ones (`pl-*`/`pr-*`, `ml-*`/`mr-*`, `left-*`/`right-*`,
+  `text-left`/`text-right`) so layout flips correctly under `dir="rtl"`. The `rtl:` variant
+  (`tailwind.config.ts`) is the escape hatch when a value genuinely must change rather than mirror.
+- Check components that position things absolutely (dropdowns, tooltips, badges, inputs with
+  leading icons) with the language switcher set to Arabic — absolute positioning is the most common
+  place RTL breaks silently.
+- Directional icons (arrows, chevrons) generally should flip; apply `rtl:rotate-180` (see
+  `components/layout/LanguageSwitcher.tsx`).
+- Motion and transforms are not mirrored automatically: a checked toggle that slides
+  `translate-x-5` in LTR needs a matching `rtl:-translate-x-5` so the knob still travels away from
+  the inline-start edge.
+
+Before merging UI work, run the RTL smoke checks in `e2e/a11y-audit.spec.ts` (they cover
+`/settings` and `/secondary` at 390px, portaled-dialog direction, and horizontal overflow) and
+confirm no horizontal scroll on a 390px viewport.
 
 ### Category Taxonomy & Preview Mode
 
@@ -327,6 +342,10 @@ When adding or renaming an invoice category:
 2. Add the category definition to `CATEGORIES` in `components/marketplace/filters.tsx`.
 3. Add translated strings to `marketplace.categoryLabels.<key>` across `en.json`, `es.json`, `ar.json`, and `pt-BR.json`.
 4. Run `npm run check:i18n` to ensure all locale catalogs maintain parity.
+
+Secondary-market filter option labels are defined in the `secondary.filters`
+message namespace. Keep option values stable for URL encoding, and translate
+only their display labels through `next-intl`.
 
 ### Manually testing the language switcher
 

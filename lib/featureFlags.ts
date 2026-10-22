@@ -25,6 +25,7 @@ import { useSyncExternalStore } from "react";
  * | kyb-mint-gate             | NEXT_PUBLIC_ENABLE_KYB_MINT_GATE             | Gate invoice minting behind KYB verification            |
  * | secondary-market          | NEXT_PUBLIC_ENABLE_SECONDARY_MARKET          | Secondary market P2P trading route                      |
  * | category-taxonomy-preview | NEXT_PUBLIC_ENABLE_CATEGORY_TAXONOMY_PREVIEW | Developer taxonomy preview panel in marketplace filters |
+ * | test-components           | NEXT_PUBLIC_ENABLE_TEST_COMPONENTS           | Render isolated test harness page for component testing  |
  */
 export type FeatureFlag =
   | "mock-data"

@@ -9,6 +9,8 @@ import {
 } from "@/config/walletAssets";
 import { useFormatters } from "@/hooks/useFormatters";
 import { queryKeys } from "@/lib/queryKeys";
+import { AccountNotFoundError } from "@/lib/stellar/client";
+import { logger } from "@/lib/logger";
 import {
   fetchAccountBalanceSnapshot,
   getAssetAmount,
@@ -44,7 +46,18 @@ export function useAccountBalanceQuery(
     staleTime: 30_000,
     refetchInterval,
     refetchIntervalInBackground: false,
-    queryFn: async () => fetchAccountBalanceSnapshot(address!),
+    retry: (failureCount, error) =>
+      !(error instanceof AccountNotFoundError) && failureCount < 3,
+    queryFn: async () => {
+      try {
+        return await fetchAccountBalanceSnapshot(address!);
+      } catch (error) {
+        if (error instanceof AccountNotFoundError) {
+          logger.info("[wallet] Stellar account is unfunded");
+        }
+        throw error;
+      }
+    },
   });
 }
 
@@ -89,12 +102,14 @@ export function useWalletBalances(
     balances.find((asset) => asset.isLowBalance) ?? null;
   const fundingAsset =
     balances.find((asset) => asset.symbol === DEFAULT_FUNDING_ASSET_SYMBOL) ?? null;
+  const isUnfunded = query.error instanceof AccountNotFoundError;
 
   return {
     address,
     balances,
-    fundingAsset,
-    lowBalanceAsset,
+    fundingAsset: isUnfunded ? null : fundingAsset,
+    lowBalanceAsset: isUnfunded ? null : lowBalanceAsset,
+    isUnfunded,
     isDisconnected: !address,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
