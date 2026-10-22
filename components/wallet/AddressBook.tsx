@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useWalletStore } from "@/store";
 import { isValidStellarAddress, truncateAddress } from "@/lib/utils";
 import { toast } from "sonner";
-import { buildLabelMessage, type SignedLabel } from "@/store/walletStore";
+import { buildLabelMessage, verifySignedLabel, isLabelVerified, type SignedLabel } from "@/store/walletStore";
 
 type AddressBookEntry = {
   id: string;
@@ -168,11 +168,21 @@ export function AddressBook({ onClose, onSelect }: { onClose?: () => void; onSel
     if (!entry.label) return;
     setSigningId(entry.id);
     try {
-      // Build the message to sign
+      // Build the message to sign using the standardized format
       const message = buildLabelMessage(entry.address, entry.label);
       
-      // For now, create a mock signature (in production, use wallet kit to sign)
-      // The actual signing would use walletKit.signMessage({ message, publicKey })
+      // In production, this would use the wallet kit to sign the message:
+      // 1. Get the wallet kit instance (StellarWalletsKit)
+      // 2. Call walletKit.signMessage({ message, publicKey })
+      // 3. Convert the signature to hex format
+      // 4. Verify locally that verifySignedLabel(signedLabel) returns true
+      //
+      // For testing purposes, we use a mock signature generator.
+      // Real implementation would look like:
+      //   const { signature, publicKey } = await walletKit.signMessage({ message, publicKey: entry.address });
+      //   const signatureHex = Buffer.from(signature, 'base64').toString('hex');
+      
+      // MOCK: Generate a test signature (replace with real wallet kit signing)
       const mockSignature = Array.from({ length: 64 }, () => 
         Math.floor(Math.random() * 16).toString(16)
       ).join("");
@@ -605,9 +615,14 @@ export function AddressBook({ onClose, onSelect }: { onClose?: () => void; onSel
                         <span className="truncate font-medium text-foreground">
                           {entry.label || truncateAddress(entry.address, 8)}
                         </span>
-                        {entry.signedLabel && (
-                          <span className="text-green-500" title={t("verifiedLabel")}>
+                        {entry.signedLabel && verifySignedLabel(entry.signedLabel) && (
+                          <span className="text-green-500 shrink-0" title={t("verifiedLabel")}>
                             <ShieldCheck className="h-4 w-4" />
+                          </span>
+                        )}
+                        {entry.signedLabel && !verifySignedLabel(entry.signedLabel) && (
+                          <span className="text-yellow-500 shrink-0" title={t("unverifiedLabel")}>
+                            <Shield className="h-4 w-4" />
                           </span>
                         )}
                         {onSelect && (
