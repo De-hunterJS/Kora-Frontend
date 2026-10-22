@@ -433,6 +433,11 @@
       "description": "We found a saved draft from your previous session. Would you like to pick up where you left off?",
       "resume": "Resume Draft",
       "discard": "Discard"
+    },
+    "errors": {
+      "partialIpfsCleanup": "Invoice creation failed. Any files already uploaded to IPFS have been removed.",
+      "partialIpfsCleanupFailed": "Invoice creation failed. Some uploaded files could not be removed — they will expire automatically.",
+      "mintFailed": "Failed to prepare the invoice for signing. Please try again."
     }
   },
   "smeDashboard": {
