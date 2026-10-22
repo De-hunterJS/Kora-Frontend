@@ -8,8 +8,12 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => {
     const keys: Record<string, string> = {
       balances: "Balances",
+        balanceLoadFailed: "Failed to load balances",
       copyAddress: "Copy address",
       retry: "Retry",
+      unfundedAccountTitle: "Activate your Stellar account",
+      unfundedAccountDescription: "Fund this account with XLM to activate it.",
+      fundWithXlm: "Fund with XLM using Friendbot",
     };
     return keys[key] || key;
   },
@@ -68,6 +72,7 @@ const mockLowBalanceAsset = vi.fn();
 const mockIsLoading = vi.fn();
 const mockIsError = vi.fn();
 const mockError = vi.fn();
+const mockIsUnfunded = vi.fn();
 const mockRefresh = vi.fn();
 
 vi.mock("@/hooks/useWalletBalances", () => ({
@@ -78,6 +83,7 @@ vi.mock("@/hooks/useWalletBalances", () => ({
     isLoading: mockIsLoading(),
     isError: mockIsError(),
     error: mockError(),
+    isUnfunded: mockIsUnfunded(),
     refresh: mockRefresh,
   }),
 }));
@@ -140,6 +146,7 @@ describe("WalletBalancePanel", () => {
     mockIsLoading.mockReturnValue(false);
     mockIsError.mockReturnValue(false);
     mockError.mockReturnValue(null);
+    mockIsUnfunded.mockReturnValue(false);
     mockRefresh.mockResolvedValue(undefined);
     mockBalances.mockReturnValue([
       { symbol: "XLM", rawAmount: 100, formattedAmount: "100.00", usdValue: undefined, isLowBalance: false },
@@ -197,7 +204,7 @@ describe("WalletBalancePanel", () => {
     await user.click(screen.getByTestId("wallet-balance-trigger"));
     
     expect(screen.getByTestId("wallet-balance-error")).toBeInTheDocument();
-    expect(screen.getByText("Connection timeout")).toBeInTheDocument();
+    expect(screen.getByText("Failed to load balances")).toBeInTheDocument();
     
     await user.click(screen.getByTestId("wallet-balance-retry"));
     expect(mockRefresh).toHaveBeenCalledTimes(1);
@@ -212,6 +219,24 @@ describe("WalletBalancePanel", () => {
     
     expect(screen.getByTestId("wallet-balance-low-warning")).toBeInTheDocument();
     expect(screen.getByText("Low USDC balance (under 100)")).toBeInTheDocument();
+  });
+
+  it("shows activation guidance and suppresses balance warnings for unfunded accounts", async () => {
+    mockIsError.mockReturnValue(true);
+    mockIsUnfunded.mockReturnValue(true);
+    mockLowBalanceAsset.mockReturnValue({ symbol: "USDC", lowBalanceThreshold: 100 });
+
+    const user = userEvent.setup();
+    render(<WalletBalance />);
+    await user.click(screen.getByTestId("wallet-balance-trigger"));
+
+    expect(screen.getByTestId("wallet-balance-unfunded")).toBeInTheDocument();
+    expect(screen.getByTestId("wallet-balance-friendbot-link")).toHaveAttribute(
+      "href",
+      "https://friendbot.stellar.org?addr=GBOOM",
+    );
+    expect(screen.queryByTestId("wallet-balance-low-warning")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("wallet-balance-success")).not.toBeInTheDocument();
   });
 
   it("uses BottomSheet on mobile", async () => {

@@ -1,28 +1,27 @@
-import React from "react";
 import { useTranslations } from "next-intl";
 
 export const JURISDICTIONS = [
-  { code: "US", name: "United States", flag: "🇺🇸" },
-  { code: "EU", name: "European Union", flag: "🇪🇺" },
-  { code: "UK", name: "United Kingdom", flag: "🇬🇧" },
-  { code: "NG", name: "Nigeria", flag: "🇳🇬" },
-  { code: "KE", name: "Kenya", flag: "🇰🇪" },
-  { code: "GH", name: "Ghana", flag: "🇬🇭" },
-  { code: "ZA", name: "South Africa", flag: "🇿🇦" },
-  { code: "OTHER", name: "Other", flag: "🌐" },
-  { code: "IN", name: "India", flag: "🇮🇳" },
-  { code: "BR", name: "Brazil", flag: "🇧🇷" },
+  { code: "US", labelKey: "US", flag: "🇺🇸" },
+  { code: "EU", labelKey: "EU", flag: "🇪🇺" },
+  { code: "UK", labelKey: "UK", flag: "🇬🇧" },
+  { code: "NG", labelKey: "NG", flag: "🇳🇬" },
+  { code: "KE", labelKey: "KE", flag: "🇰🇪" },
+  { code: "GH", labelKey: "GH", flag: "🇬🇭" },
+  { code: "ZA", labelKey: "ZA", flag: "🇿🇦" },
+  { code: "OTHER", labelKey: "OTHER", flag: "🌐" },
+  { code: "IN", labelKey: "IN", flag: "🇮🇳" },
+  { code: "BR", labelKey: "BR", flag: "🇧🇷" },
 ];
 
 export const CATEGORIES = [
-  { key: "manufacturing", label: "Manufacturing", icon: "🏭" },
-  { key: "services", label: "Services", icon: "🛠️" },
-  { key: "agriculture", label: "Agriculture", icon: "🌾" },
-  { key: "technology", label: "Technology", icon: "💻" },
-  { key: "healthcare", label: "Healthcare", icon: "🩺" },
-  { key: "retail", label: "Retail", icon: "🛍️" },
-  { key: "construction", label: "Construction", icon: "🏗️" },
-  { key: "export", label: "Export", icon: "🚢" },
+  { key: "manufacturing", labelKey: "manufacturing", icon: "🏭" },
+  { key: "services", labelKey: "services", icon: "🛠️" },
+  { key: "agriculture", labelKey: "agriculture", icon: "🌾" },
+  { key: "technology", labelKey: "technology", icon: "💻" },
+  { key: "healthcare", labelKey: "healthcare", icon: "🩺" },
+  { key: "retail", labelKey: "retail", icon: "🛍️" },
+  { key: "construction", labelKey: "construction", icon: "🏗️" },
+  { key: "export", labelKey: "export", icon: "🚢" },
 ];
 
 export interface PositionFilterState {
@@ -35,18 +34,18 @@ export interface PositionFilterState {
 }
 
 export const TENOR_OPTIONS = [
-  { value: "all", label: "All Tenors" },
-  { value: "0-30", label: "0 - 30 days", min: 0, max: 30 },
-  { value: "31-60", label: "31 - 60 days", min: 31, max: 60 },
-  { value: "61-90", label: "61 - 90 days", min: 61, max: 90 },
-  { value: "90+", label: "90+ days", min: 91, max: 365 },
+  { value: "all", labelKey: "all" },
+  { value: "0-30", labelKey: "0-30", min: 0, max: 30 },
+  { value: "31-60", labelKey: "31-60", min: 31, max: 60 },
+  { value: "61-90", labelKey: "61-90", min: 61, max: 90 },
+  { value: "90+", labelKey: "90+", min: 91, max: 365 },
 ];
 
 export const YIELD_OPTIONS = [
-  { value: "0", label: "Any Yield" },
-  { value: "5", label: "5%+ Yield" },
-  { value: "10", label: "10%+ Yield" },
-  { value: "15", label: "15%+ Yield" },
+  { value: "0", labelKey: "0" },
+  { value: "5", labelKey: "5" },
+  { value: "10", labelKey: "10" },
+  { value: "15", labelKey: "15" },
 ];
 
 /**
@@ -54,8 +53,8 @@ export const YIELD_OPTIONS = [
  * stable code as the value used in URLs and filtering logic.
  */
 export function useJurisdictionLabel() {
-  const t = useTranslations();
-  return (code: string) => (t.has(`jurisdictions.${code}`) ? t(`jurisdictions.${code}`) : code);
+  const t = useTranslations("marketplace.jurisdictionLabels");
+  return (code: string) => (t.has(code) ? t(code) : code);
 }
 
 /**
@@ -63,8 +62,8 @@ export function useJurisdictionLabel() {
  * stable key as the value used in URLs and filtering logic.
  */
 export function useCategoryLabel() {
-  const t = useTranslations();
-  return (key: string) => (t.has(`categories.${key}`) ? t(`categories.${key}`) : key);
+  const t = useTranslations("marketplace.categoryLabels");
+  return (key: string) => (t.has(key) ? t(key) : key);
 }
 
 /**
@@ -72,8 +71,8 @@ export function useCategoryLabel() {
  * stable value as the value used in URLs and filtering logic.
  */
 export function useTenorLabel() {
-  const t = useTranslations();
-  return (value: string) => (t.has(`tenors.${value}`) ? t(`tenors.${value}`) : value);
+  const t = useTranslations("secondary.filters.tenor");
+  return (value: string) => (t.has(value) ? t(value) : value);
 }
 
 /**
@@ -81,6 +80,6 @@ export function useTenorLabel() {
  * stable value as the value used in URLs and filtering logic.
  */
 export function useYieldLabel() {
-  const t = useTranslations();
-  return (value: string) => (t.has(`yields.${value}`) ? t(`yields.${value}`) : value);
+  const t = useTranslations("secondary.filters.yield");
+  return (value: string) => (t.has(value) ? t(value) : value);
 }

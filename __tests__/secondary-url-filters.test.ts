@@ -3,6 +3,16 @@
  */
 
 import { describe, it, expect } from "vitest";
+import enMessages from "@/messages/en.json";
+import esMessages from "@/messages/es.json";
+import arMessages from "@/messages/ar.json";
+import ptBrMessages from "@/messages/pt-BR.json";
+import {
+  CATEGORIES,
+  JURISDICTIONS,
+  TENOR_OPTIONS,
+  YIELD_OPTIONS,
+} from "@/components/marketplace/filters";
 import {
   parseTenorParam,
   parseYieldParam,
@@ -13,6 +23,30 @@ import {
 } from "@/lib/secondaryUrlFilters";
 
 describe("secondaryUrlFilters (#643)", () => {
+    it("defines every secondary filter label in all supported locales", () => {
+      const locales = [enMessages, esMessages, arMessages, ptBrMessages] as const;
+
+      for (const messages of locales) {
+        const filters = messages.secondary.filters;
+        for (const option of TENOR_OPTIONS) {
+          expect(filters.tenor).toHaveProperty(option.labelKey);
+        }
+        for (const option of YIELD_OPTIONS) {
+          expect(filters.yield).toHaveProperty(option.labelKey);
+        }
+        for (const jurisdiction of JURISDICTIONS) {
+          expect(messages.marketplace.jurisdictionLabels).toHaveProperty(
+            jurisdiction.labelKey,
+          );
+        }
+        for (const category of CATEGORIES) {
+          expect(messages.marketplace.categoryLabels).toHaveProperty(
+            category.labelKey,
+          );
+        }
+      }
+    });
+
   it("falls back safely for invalid tenor and yield params", () => {
     expect(parseTenorParam("bogus")).toBe("all");
     expect(parseTenorParam("nope-90")).toBe("all");

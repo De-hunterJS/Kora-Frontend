@@ -72,6 +72,8 @@ export interface SecondaryMarketItem {
 
 function SecondaryMarketplaceContent() {
   const t = useTranslations("secondaryMarket");
+    const t = useTranslations("secondaryMarket");
+    const tFilters = useTranslations("secondary.filters");
   const { formatCurrency, formatPercentage } = useFormatters();
   const secondaryEnabled = useFeatureFlag("secondary-market");
 
@@ -91,6 +93,14 @@ function SecondaryMarketplaceContent() {
   // Issue #597: one schedule, read from validated env, shared by every figure
   // on this page.
   const feeSchedule = useMemo(() => getFeeSchedule(env), []);
+  const tenorOptions = TENOR_OPTIONS.map(({ labelKey, ...option }) => ({
+    ...option,
+    label: tFilters(`tenor.${labelKey}`),
+  }));
+  const yieldOptions = YIELD_OPTIONS.map(({ labelKey, ...option }) => ({
+    ...option,
+    label: tFilters(`yield.${labelKey}`),
+  }));
 
   const { listings: storeListings } = usePositionListingStore();
   const { invoices } = useInvoiceStore();
@@ -353,7 +363,7 @@ function SecondaryMarketplaceContent() {
                 <Select
                   value={tenorFilter}
                   onChange={(val) => setTenorFilter(sanitizeQueryParam(val))}
-                  options={TENOR_OPTIONS}
+                  options={tenorOptions}
                   loading={myPositionsQuery.isLoading}
                   className="w-40 bg-zinc-950/80 border-zinc-800 text-xs"
                   aria-label={t("tenorAria")}
@@ -366,7 +376,7 @@ function SecondaryMarketplaceContent() {
                 <Select
                   value={yieldFilter}
                   onChange={(val) => setYieldFilter(sanitizeQueryParam(val))}
-                  options={YIELD_OPTIONS}
+                  options={yieldOptions}
                   loading={myPositionsQuery.isLoading}
                   className="w-36 bg-zinc-950/80 border-zinc-800 text-xs"
                   aria-label={t("yieldAria")}
@@ -650,7 +660,7 @@ function SecondaryMarketplaceContent() {
                 <Select
                   value={tenorFilter}
                   onChange={(val) => setTenorFilter(sanitizeQueryParam(val))}
-                  options={TENOR_OPTIONS}
+                  options={tenorOptions}
                   loading={myPositionsQuery.isLoading}
                   className="w-full border-zinc-800 bg-zinc-900 text-xs"
                 />
@@ -661,7 +671,7 @@ function SecondaryMarketplaceContent() {
                 <Select
                   value={yieldFilter}
                   onChange={(val) => setYieldFilter(sanitizeQueryParam(val))}
-                  options={YIELD_OPTIONS}
+                  options={yieldOptions}
                   loading={myPositionsQuery.isLoading}
                   className="w-full border-zinc-800 bg-zinc-900 text-xs"
                 />
