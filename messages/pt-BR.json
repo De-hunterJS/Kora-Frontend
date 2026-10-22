@@ -924,7 +924,9 @@
     "title": "Rede Incorreta",
     "message": "Rede Incorreta: Conectado a {current}, mas este aplicativo requer {expected}{passphrase}. Por favor, mude a rede da sua carteira para continuar.",
     "passphraseMismatch": " (incompatibilidade de frase secreta)",
-    "dismiss": "Fechar aviso de rede incorreta"
+    "dismiss": "Fechar aviso de rede incorreta",
+    "fix": "Corrigir",
+    "switchNetwork": "Mudar Rede"
   },
   "addressBook": {
     "title": "Agenda de Endereços",

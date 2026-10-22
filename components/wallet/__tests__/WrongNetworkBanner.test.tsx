@@ -5,6 +5,56 @@ import { useWallet } from "@/hooks/useWallet";
 import { useWalletStore } from "@/store";
 import * as envModule from "@/lib/env";
 
+// Mock next-intl — returns English strings matching messages/en.json for
+// the two namespaces used by WrongNetworkBanner.
+vi.mock("next-intl", () => ({
+  useTranslations: (namespace?: string) => (key: string, values?: Record<string, unknown>) => {
+    const messages: Record<string, Record<string, string>> = {
+      wrongNetwork: {
+        title: "Wrong Network",
+        message: "Wrong Network: Connected to {current}, but this app requires {expected}{passphrase}. Please switch your wallet network to continue.",
+        passphraseMismatch: " (passphrase mismatch)",
+        dismiss: "Dismiss wrong network warning",
+        fix: "Fix",
+        switchNetwork: "Switch Network",
+      },
+      networkWizard: {
+        title: "Network Switch Wizard",
+        mismatchType: "Mismatch type",
+        currentNetwork: "Current network",
+        expectedNetwork: "Expected network",
+        passphraseLabel: "Passphrase",
+        switchInstructions: "Instructions",
+        step1Desc: "Detecting network…",
+        step4Desc: "Verification failed. Please retry.",
+        switchButton: "Switch Now",
+        tryAgain: "Try Again",
+        success: "Network switched successfully",
+        cancel: "Cancel",
+        detectTitle: "Detect",
+        switchTitle: "Switch",
+        refreshTitle: "Refresh",
+        verifyTitle: "Verify",
+        network: "network",
+        passphrase: "passphrase",
+        freighterSteps: "Open Freighter → Settings → Network → {network}",
+        xbullSteps: "Open xBull → Network → {network}",
+        genericSteps: "Open your wallet and switch to {network}",
+      },
+    };
+
+    const ns = namespace ?? "";
+    const template = messages[ns]?.[key] ?? key;
+
+    if (!values) return template;
+    // Interpolate {placeholder} values
+    return Object.entries(values).reduce<string>(
+      (acc, [k, v]) => acc.replace(new RegExp(`\\{${k}\\}`, "g"), String(v ?? "")),
+      template,
+    );
+  },
+}));
+
 // Mock the hooks and modules
 vi.mock("@/hooks/useWallet");
 vi.mock("@/store");
@@ -18,6 +68,7 @@ vi.mock("@/lib/env", () => ({
     NEXT_PUBLIC_MARKETPLACE_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
     NEXT_PUBLIC_TOKEN_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
     NEXT_PUBLIC_IPFS_GATEWAY: "https://gateway.pinata.cloud/ipfs",
+    NEXT_PUBLIC_ENABLE_MOCK_DATA: true,
   },
 }));
 
@@ -193,5 +244,75 @@ describe("WrongNetworkBanner", () => {
     expect(banner).toHaveTextContent(/Connected to.*Mainnet/);
     expect(banner).toHaveTextContent(/Testnet/);
     expect(banner).toHaveTextContent(/passphrase mismatch/);
+  });
+
+  // ── i18n CTA tests (issue #1050) ─────────────────────────────────────────
+
+  it("renders translated 'Fix' button with correct aria-label", () => {
+    vi.mocked(useWallet).mockReturnValue({
+      isConnected: true,
+    } as any);
+    vi.mocked(useWalletStore).mockReturnValue({
+      isWrongNetwork: () => true,
+      hasPassphraseMismatch: () => false,
+      network: "mainnet",
+    } as any);
+
+    render(<WrongNetworkBanner />);
+    const fixBtn = screen.getByRole("button", { name: "Fix" });
+    expect(fixBtn).toBeInTheDocument();
+    expect(fixBtn).toHaveAttribute("aria-label", "Fix");
+  });
+
+  it("renders translated 'Switch Network' button with correct aria-label", () => {
+    vi.mocked(useWallet).mockReturnValue({
+      isConnected: true,
+    } as any);
+    vi.mocked(useWalletStore).mockReturnValue({
+      isWrongNetwork: () => true,
+      hasPassphraseMismatch: () => false,
+      network: "mainnet",
+    } as any);
+
+    render(<WrongNetworkBanner />);
+    const switchBtn = screen.getByRole("button", { name: "Switch Network" });
+    expect(switchBtn).toBeInTheDocument();
+    expect(switchBtn).toHaveAttribute("aria-label", "Switch Network");
+  });
+
+  it("compact banner has no remaining hard-coded English CTA strings", () => {
+    vi.mocked(useWallet).mockReturnValue({
+      isConnected: true,
+    } as any);
+    vi.mocked(useWalletStore).mockReturnValue({
+      isWrongNetwork: () => true,
+      hasPassphraseMismatch: () => false,
+      network: "mainnet",
+    } as any);
+
+    const { container } = render(<WrongNetworkBanner />);
+    // Buttons exist with translated text (mock returns English keys as values)
+    expect(screen.getByRole("button", { name: "Fix" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch Network" })).toBeInTheDocument();
+    // Wizard is NOT shown in compact view
+    expect(screen.queryByText("Network Switch Wizard")).not.toBeInTheDocument();
+  });
+
+  it("Fix button opens the wizard view", () => {
+    vi.mocked(useWallet).mockReturnValue({
+      isConnected: true,
+    } as any);
+    vi.mocked(useWalletStore).mockReturnValue({
+      isWrongNetwork: () => true,
+      hasPassphraseMismatch: () => false,
+      network: "mainnet",
+    } as any);
+
+    render(<WrongNetworkBanner />);
+    fireEvent.click(screen.getByRole("button", { name: "Fix" }));
+    // Wizard title should now be visible
+    expect(screen.getByText("Network Switch Wizard")).toBeInTheDocument();
+    // Compact CTAs should be gone
+    expect(screen.queryByRole("button", { name: "Fix" })).not.toBeInTheDocument();
   });
 });

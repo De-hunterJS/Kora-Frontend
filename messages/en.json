@@ -924,7 +924,9 @@
     "title": "Wrong Network",
     "message": "Wrong Network: Connected to {current}, but this app requires {expected}{passphrase}. Please switch your wallet network to continue.",
     "passphraseMismatch": " (passphrase mismatch)",
-    "dismiss": "Dismiss wrong network warning"
+    "dismiss": "Dismiss wrong network warning",
+    "fix": "Fix",
+    "switchNetwork": "Switch Network"
   },
   "addressBook": {
     "title": "Address Book",
