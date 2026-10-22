@@ -54,7 +54,23 @@
     "redirecting": "Taking you to your dashboard…",
     "mobileApp": "Mobile app",
     "openInApp": "Open in app",
-    "deepLinkWaiting": "Waiting for wallet app to open…"
+    "deepLinkWaiting": "Waiting for wallet app to open…",
+    "trustline": {
+      "eurc": {
+        "cta": "Add EURC trustline",
+        "adding": "Adding EURC…",
+        "loading": "Adding EURC trustline…",
+        "success": "EURC trustline added successfully",
+        "error": "Failed to add EURC trustline"
+      },
+      "usdc": {
+        "cta": "Add USDC trustline",
+        "adding": "Adding USDC…",
+        "loading": "Adding USDC trustline…",
+        "success": "USDC trustline added — balance will update shortly",
+        "error": "Failed to add USDC trustline"
+      }
+    }
   },
   "transaction": {
     "building": "Building transaction…",
@@ -569,7 +585,14 @@
       "description": "Fund invoices on the marketplace to start building your portfolio.",
       "message": "Fund invoices on the marketplace to build your portfolio."
     },
-    "fundTestnet": "Fund Testnet Account"
+    "fundTestnet": "Fund Testnet Account",
+    "export": {
+      "csv": "Export CSV",
+      "pdf": "Export PDF",
+      "csvAriaLabel": "Export portfolio positions as CSV",
+      "pdfAriaLabel": "Export portfolio positions as PDF",
+      "emptyTooltip": "No positions to export"
+    }
   },
   "transactions": {
     "title": "Transaction History",

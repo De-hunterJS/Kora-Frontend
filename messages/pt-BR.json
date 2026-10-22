@@ -54,7 +54,23 @@
     "redirecting": "Levando você ao seu painel…",
     "mobileApp": "Aplicativo móvel",
     "openInApp": "Abrir no aplicativo",
-    "deepLinkWaiting": "Aguardando o aplicativo da carteira abrir…"
+    "deepLinkWaiting": "Aguardando o aplicativo da carteira abrir…",
+    "trustline": {
+      "eurc": {
+        "cta": "Adicionar linha de confiança EURC",
+        "adding": "Adicionando EURC…",
+        "loading": "Adicionando linha de confiança EURC…",
+        "success": "Linha de confiança EURC adicionada com sucesso",
+        "error": "Falha ao adicionar linha de confiança EURC"
+      },
+      "usdc": {
+        "cta": "Adicionar linha de confiança USDC",
+        "adding": "Adicionando USDC…",
+        "loading": "Adicionando linha de confiança USDC…",
+        "success": "Linha de confiança USDC adicionada — saldo será atualizado em breve",
+        "error": "Falha ao adicionar linha de confiança USDC"
+      }
+    }
   },
   "transaction": {
     "building": "Construindo transação…",
@@ -564,7 +580,14 @@
       "description": "Financie faturas no mercado para começar a construir sua carteira.",
       "message": "Financie faturas no mercado para construir sua carteira."
     },
-    "fundTestnet": "Financiar Conta Testnet"
+    "fundTestnet": "Financiar Conta Testnet",
+    "export": {
+      "csv": "Exportar CSV",
+      "pdf": "Exportar PDF",
+      "csvAriaLabel": "Exportar posições como CSV",
+      "pdfAriaLabel": "Exportar posições como PDF",
+      "emptyTooltip": "Nenhuma posição para exportar"
+    }
   },
   "transactions": {
     "title": "Histórico de Transações",

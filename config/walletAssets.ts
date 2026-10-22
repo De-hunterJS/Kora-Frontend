@@ -19,14 +19,29 @@ export const TESTNET_EURC_ISSUER =
   "GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
 /**
+ * Resolve the USDC issuer address. Reads NEXT_PUBLIC_USDC_ISSUER at runtime
+ * so both testnet and mainnet deployments can use the correct Circle issuer
+ * without a code change.  Falls back to the canonical testnet issuer when the
+ * env var is absent (development / CI).
+ */
+function resolveUsdcIssuer(): string {
+  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_USDC_ISSUER) {
+    return process.env.NEXT_PUBLIC_USDC_ISSUER;
+  }
+  return TESTNET_USDC_ISSUER;
+}
+
+const USDC_ISSUER = resolveUsdcIssuer();
+
+/**
  * Stellar asset objects + trustline helpers for onboarding flows (EURC/USDC).
  */
 export const WALLET_ASSETS = {
   usdc: {
     code: "USDC",
-    issuer: TESTNET_USDC_ISSUER,
+    issuer: USDC_ISSUER,
     trustlineLimit: "1000000",
-    asset: new StellarSdk.Asset("USDC", TESTNET_USDC_ISSUER),
+    asset: new StellarSdk.Asset("USDC", USDC_ISSUER),
   },
   eurc: {
     code: "EURC",
@@ -52,7 +67,7 @@ export const DEFAULT_WALLET_ASSETS: readonly WalletAssetConfig[] = [
     symbol: "USDC",
     type: "credit",
     code: "USDC",
-    issuer: TESTNET_USDC_ISSUER,
+    issuer: USDC_ISSUER,
     decimals: 2,
     lowBalanceThreshold: 100,
   },

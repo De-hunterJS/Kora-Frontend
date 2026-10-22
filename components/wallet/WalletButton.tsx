@@ -44,6 +44,7 @@ export function WalletButton() {
     manualReconnect,
     fundWalletOnTestnet,
     addEurcTrustlineOnTestnet,
+    addUsdcTrustlineOnTestnet,
     refreshBalance,
   } = useWallet();
   const { isWrongNetwork, hasPassphraseMismatch, network } = useWalletStore();
@@ -55,6 +56,7 @@ export function WalletButton() {
   const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
   const [isFunding, setIsFunding] = useState(false);
   const [isAddingEurc, setIsAddingEurc] = useState(false);
+  const [isAddingUsdc, setIsAddingUsdc] = useState(false);
   const [kycModalOpen, setKycModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"notifications" | "kyc">("notifications");
   const { kycStatus } = useWalletStore();
@@ -111,17 +113,31 @@ export function WalletButton() {
     setIsAddingEurc(true);
     const toastId = "eurc-trustline";
     try {
-      toast.loading("Adding EURC trustline...", { id: toastId });
+      toast.loading(t("trustline.eurc.loading"), { id: toastId });
       await addEurcTrustlineOnTestnet();
-      toast.success("EURC trustline added", { id: toastId });
+      toast.success(t("trustline.eurc.success"), { id: toastId });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to add EURC trustline";
+      const message = error instanceof Error ? error.message : t("trustline.eurc.error");
       toast.error(message, { id: toastId });
     } finally {
       setIsAddingEurc(false);
     }
   };
-;
+
+  const handleAddUsdcTrustline = async () => {
+    setIsAddingUsdc(true);
+    const toastId = "usdc-trustline";
+    try {
+      toast.loading(t("trustline.usdc.loading"), { id: toastId });
+      await addUsdcTrustlineOnTestnet();
+      toast.success(t("trustline.usdc.success"), { id: toastId });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("trustline.usdc.error");
+      toast.error(message, { id: toastId });
+    } finally {
+      setIsAddingUsdc(false);
+    }
+  };
 
   const handleDisconnect = async () => {
     await disconnectWallet();
@@ -351,8 +367,25 @@ export function WalletButton() {
                       ) : (
                         <Coins className="h-3.5 w-3.5" />
                       )}
-                      {isAddingEurc ? "Adding EURC..." : "Add EURC trustline"}
+                      {isAddingEurc ? t("trustline.eurc.adding") : t("trustline.eurc.cta")}
                     </button>
+                    {/* USDC trustline CTA: show when USDC balance is 0 (trustline absent or unfunded) */}
+                    {(balance?.usdc === "0" || !balance?.usdc) && (
+                      <button
+                        type="button"
+                        disabled={isAddingUsdc || hasNetworkMismatch}
+                        onClick={handleAddUsdcTrustline}
+                        data-testid="add-usdc-trustline-btn"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60"
+                      >
+                        {isAddingUsdc ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Coins className="h-3.5 w-3.5" />
+                        )}
+                        {isAddingUsdc ? t("trustline.usdc.adding") : t("trustline.usdc.cta")}
+                      </button>
+                    )}
                   </>
                 )}
                 <button
