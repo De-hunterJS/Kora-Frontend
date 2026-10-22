@@ -181,7 +181,12 @@ The generated snapshots are stored in `__tests__/__snapshots__/` and must be com
 
 For local QA and isolated component testing (such as Playwright component tests for `FileInput`, `RangeSlider`, and `DatePicker`), an isolated test fixture page is available at `/test-components`.
 
-This route is development-only (`NODE_ENV !== "production"` or when `NEXT_PUBLIC_ENABLE_TEST_COMPONENTS="true"`). In production builds, requests to `/test-components` are automatically redirected to the home page (`/`).
+This route is development-only and is controlled by the `test-components` feature flag
+([`NEXT_PUBLIC_ENABLE_TEST_COMPONENTS`](docs/feature-flags.md#flag-reference)).
+In development (`NODE_ENV === "development"`), the page is always accessible.
+In production builds or on non-dev deployments, requests to `/test-components` are
+automatically redirected to the home page (`/`) unless the flag is explicitly enabled via env var.
+See [Feature Flags § test-components](docs/feature-flags.md#flag-reference) for more details.
 
 ## Internationalization (i18n)
 
